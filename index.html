@@ -18,6 +18,12 @@
     --radius:14px;
   }
   *{box-sizing:border-box;}
+  html{
+    /* スマホのブラウザが読みやすさのために文字を自動拡大する機能を無効化。
+       これが印刷時のレイアウト崩れ（A4 1枚に収まらない）の主な原因になるため。 */
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
   body{
     margin:0;
     font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
@@ -125,11 +131,13 @@
   @media print{
     @page{ size:A4; margin:15mm 10mm 9mm 20mm; }
     header.appbar, .no-print{display:none !important;}
-    body{background:#fff;}
+    html, body{background:#fff;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
     main{max-width:100%;padding:0;margin:0;}
     #printArea{
       display:block;
       font-size:11pt;
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
     }
     .screen{display:none !important;}
     #printArea .p-title{text-align:center;font-size:15pt;font-weight:700;margin-bottom:2pt;}
