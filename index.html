@@ -166,6 +166,47 @@
     #printArea .p-remarks p{margin:0;font-size:11pt;line-height:1.35;white-space:pre-wrap;}
   }
   footer.foot{text-align:center;color:var(--sub);font-size:.72rem;padding:20px 0;}
+
+  /* ---- PDF直接生成モード（html2pdf.jsでPDFファイルを直接作成する用。
+     ブラウザの「印刷」機能を経由しないため、iOSが付加するURL/日付/ページ番号の
+     フッターや、印刷許可ダイアログが一切出ない。@media print と同じ見た目を
+     画面上に一時的に再現して撮影するためのクラス） ---- */
+  /* 他の要素を display:none にはしない（html2pdf.jsが内部的にbodyへ追加する
+     一時的なレンダリング用コンテナまで隠れてしまい、真っ白なPDFになる不具合を防ぐため）。
+     画面のちらつきは #pdfLoading の全画面オーバーレイで覆って見せないようにする。 */
+  body.pdf-mode{background:#fff;}
+  body.pdf-mode #printArea{
+    display:block;
+    position:relative;
+    z-index:1;
+    width:180mm;
+    margin:0 auto;
+    background:#fff;
+    font-size:11pt;
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+  body.pdf-mode #printArea .p-title{text-align:center;font-size:15pt;font-weight:700;margin-bottom:2pt;}
+  body.pdf-mode #printArea .p-facility{text-align:center;font-size:10pt;color:#555;margin-bottom:6pt;}
+  body.pdf-mode #printArea .p-resident{
+    border:2.5px solid #000;border-radius:3pt;padding:7pt 14pt;margin-bottom:8pt;
+    font-size:14pt;font-weight:700;background:#f2f2f2;letter-spacing:.5px;
+  }
+  body.pdf-mode #printArea .p-resident #pm-resident{font-size:24pt;margin:0 4pt;}
+  body.pdf-mode #printArea .p-resident-sama{font-size:13pt;font-weight:700;}
+  body.pdf-mode #printArea table.meta{width:100%;border-collapse:collapse;margin-bottom:6pt;}
+  body.pdf-mode #printArea table.meta td{border:1px solid #999;padding:3pt 7pt;font-size:10.5pt;line-height:1.3;}
+  body.pdf-mode #printArea table.meta tr:first-child td{font-weight:700;background:#f5f5f5;font-size:9.5pt;}
+  body.pdf-mode #printArea table.meta td:nth-child(1),body.pdf-mode #printArea table.meta td:nth-child(3){white-space:nowrap;width:1%;}
+  body.pdf-mode table.p-cats{width:100%;border-collapse:collapse;margin-bottom:6pt;}
+  body.pdf-mode table.p-cats td{border:1px solid #999;padding:5pt 7pt;font-size:11pt;line-height:1.38;vertical-align:top;}
+  body.pdf-mode table.p-cats td.cat-name{width:12%;font-weight:700;background:#eee;white-space:nowrap;}
+  body.pdf-mode table.p-cats td.cat-tag{width:14%;text-align:center;font-size:9.5pt;font-weight:700;white-space:nowrap;}
+  body.pdf-mode table.p-cats td.cat-text{white-space:pre-wrap;}
+  body.pdf-mode #printArea .p-tag-ok{display:inline-block;font-size:9.5pt;font-weight:700;padding:1pt 6pt;border-radius:8pt;border:1px solid #333;white-space:nowrap;}
+  body.pdf-mode #printArea .p-remarks{border:1px solid #999;padding:6pt 9pt;}
+  body.pdf-mode #printArea .p-remarks h4{margin:0 0 3pt;font-size:11pt;}
+  body.pdf-mode #printArea .p-remarks p{margin:0;font-size:11pt;line-height:1.35;white-space:pre-wrap;}
 </style>
 </head>
 <body>
@@ -282,7 +323,8 @@
     </div>
     <div class="row no-print">
       <button class="btn" onclick="saveAssessment()">💾 この内容を保存する</button>
-      <button class="btn secondary" onclick="printReport()">🖨 印刷 / PDF保存</button>
+      <button class="btn secondary" onclick="printReport()">🖨 印刷</button>
+      <button class="btn secondary" onclick="downloadPdfReport()">📄 PDFを保存</button>
     </div>
   </div>
 
@@ -315,7 +357,8 @@
     <div class="card" id="histViewCategoriesCard"></div>
     <div class="card" id="histViewRemarksCard"></div>
     <div class="row no-print">
-      <button class="btn secondary" onclick="printHistoryReport()">🖨 印刷 / PDF保存</button>
+      <button class="btn secondary" onclick="printHistoryReport()">🖨 印刷</button>
+      <button class="btn secondary" onclick="downloadPdfHistoryReport()">📄 PDFを保存</button>
       <button class="btn danger" onclick="deleteHistoryRecord()">この記録を削除</button>
     </div>
   </div>
@@ -338,6 +381,7 @@
   <div class="p-remarks"><h4>備考</h4><p id="pm-remarks"></p></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 /* =========================================================
    1. アセスメント決定木データ（元Excelの分岐ロジックを再現）
@@ -886,6 +930,80 @@ function fillPrintArea(rec){
   }).join('');
   catsEl.innerHTML = '<table class="p-cats">'+rows+'</table>';
   document.getElementById('pm-remarks').textContent = rec.remarks || '（なし）';
+}
+
+/* ---------------------------------------------------------
+   ブラウザの印刷機能を使わず、PDFファイルを直接作成する。
+   iOS Safariの「自動印刷の確認ダイアログ」や、印刷時に付加される
+   URL／日付／ページ番号のフッターを避けるための方式。
+   --------------------------------------------------------- */
+function showPdfLoading(show){
+  let el = document.getElementById('pdfLoading');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'pdfLoading';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);color:#fff;'+
+      'display:flex;align-items:center;justify-content:center;font-size:16px;z-index:9999;text-align:center;padding:20px;';
+    el.textContent = 'PDFを作成しています…';
+    document.body.appendChild(el);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
+async function exportPrintAreaAsPdf(filename){
+  if(typeof html2pdf === 'undefined'){
+    alert('PDF機能の読み込みに失敗しました。通信環境の良い場所で、ページを再読み込みしてから再度お試しください。');
+    return;
+  }
+  document.body.classList.add('pdf-mode');
+  showPdfLoading(true);
+  await new Promise(r=>setTimeout(r, 60)); // レイアウト確定を待つ
+  const el = document.getElementById('printArea');
+  const opt = {
+    filename: filename,
+    margin: [15,20,9,10], // [上,左,下,右] mm（画面印刷時の @page 余白と同じ）
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['avoid-all'] }
+  };
+  try{
+    const blob = await html2pdf().set(opt).from(el).outputPdf('blob');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }catch(e){
+    console.error(e);
+    alert('PDFの作成に失敗しました。時間をおいて再度お試しください。');
+  }finally{
+    document.body.classList.remove('pdf-mode');
+    showPdfLoading(false);
+  }
+}
+
+function downloadPdfReport(){
+  const texts = collectResultTexts();
+  const remarks = document.getElementById('resultRemarks').value;
+  const createdDate = document.getElementById('resultCreatedDate').value || todayISO();
+  session.createdDate = createdDate;
+  fillPrintArea({
+    residentName: session.residentName,
+    assessorName: session.assessorName,
+    date: session.date,
+    createdAt: createdDate,
+    texts: texts,
+    meta: session.meta,
+    remarks: remarks
+  });
+  const fname = (session.residentName || 'アセスメント') + '_' + (session.date || todayISO()) + '.pdf';
+  exportPrintAreaAsPdf(fname);
+}
+
+function downloadPdfHistoryReport(){
+  const rec = loadRecords().find(r=>r.id===currentHistoryRecordId);
+  if(!rec) return;
+  fillPrintArea(rec);
+  const fname = (rec.residentName || 'アセスメント') + '_' + (rec.date || '') + '.pdf';
+  exportPrintAreaAsPdf(fname);
 }
 
 /* =========================================================
