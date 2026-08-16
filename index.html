@@ -167,46 +167,6 @@
   }
   footer.foot{text-align:center;color:var(--sub);font-size:.72rem;padding:20px 0;}
 
-  /* ---- PDF直接生成モード（html2pdf.jsでPDFファイルを直接作成する用。
-     ブラウザの「印刷」機能を経由しないため、iOSが付加するURL/日付/ページ番号の
-     フッターや、印刷許可ダイアログが一切出ない。@media print と同じ見た目を
-     画面上に一時的に再現して撮影するためのクラス） ---- */
-  /* 他の要素を display:none にはしない（html2pdf.jsが内部的にbodyへ追加する
-     一時的なレンダリング用コンテナまで隠れてしまい、真っ白なPDFになる不具合を防ぐため）。
-     画面のちらつきは #pdfLoading の全画面オーバーレイで覆って見せないようにする。 */
-  body.pdf-mode{background:#fff;}
-  body.pdf-mode #printArea{
-    display:block;
-    position:relative;
-    z-index:1;
-    width:180mm;
-    margin:0 auto;
-    background:#fff;
-    font-size:11pt;
-    -webkit-text-size-adjust:100%;
-    text-size-adjust:100%;
-  }
-  body.pdf-mode #printArea .p-title{text-align:center;font-size:15pt;font-weight:700;margin-bottom:2pt;}
-  body.pdf-mode #printArea .p-facility{text-align:center;font-size:10pt;color:#555;margin-bottom:6pt;}
-  body.pdf-mode #printArea .p-resident{
-    border:2.5px solid #000;border-radius:3pt;padding:7pt 14pt;margin-bottom:8pt;
-    font-size:14pt;font-weight:700;background:#f2f2f2;letter-spacing:.5px;
-  }
-  body.pdf-mode #printArea .p-resident #pm-resident{font-size:24pt;margin:0 4pt;}
-  body.pdf-mode #printArea .p-resident-sama{font-size:13pt;font-weight:700;}
-  body.pdf-mode #printArea table.meta{width:100%;border-collapse:collapse;margin-bottom:6pt;}
-  body.pdf-mode #printArea table.meta td{border:1px solid #999;padding:3pt 7pt;font-size:10.5pt;line-height:1.3;}
-  body.pdf-mode #printArea table.meta tr:first-child td{font-weight:700;background:#f5f5f5;font-size:9.5pt;}
-  body.pdf-mode #printArea table.meta td:nth-child(1),body.pdf-mode #printArea table.meta td:nth-child(3){white-space:nowrap;width:1%;}
-  body.pdf-mode table.p-cats{width:100%;border-collapse:collapse;margin-bottom:6pt;}
-  body.pdf-mode table.p-cats td{border:1px solid #999;padding:5pt 7pt;font-size:11pt;line-height:1.38;vertical-align:top;}
-  body.pdf-mode table.p-cats td.cat-name{width:12%;font-weight:700;background:#eee;white-space:nowrap;}
-  body.pdf-mode table.p-cats td.cat-tag{width:14%;text-align:center;font-size:9.5pt;font-weight:700;white-space:nowrap;}
-  body.pdf-mode table.p-cats td.cat-text{white-space:pre-wrap;}
-  body.pdf-mode #printArea .p-tag-ok{display:inline-block;font-size:9.5pt;font-weight:700;padding:1pt 6pt;border-radius:8pt;border:1px solid #333;white-space:nowrap;}
-  body.pdf-mode #printArea .p-remarks{border:1px solid #999;padding:6pt 9pt;}
-  body.pdf-mode #printArea .p-remarks h4{margin:0 0 3pt;font-size:11pt;}
-  body.pdf-mode #printArea .p-remarks p{margin:0;font-size:11pt;line-height:1.35;white-space:pre-wrap;}
 </style>
 </head>
 <body>
@@ -381,7 +341,7 @@
   <div class="p-remarks"><h4>備考</h4><p id="pm-remarks"></p></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script>
 /* =========================================================
    1. アセスメント決定木データ（元Excelの分岐ロジックを再現）
@@ -933,9 +893,11 @@ function fillPrintArea(rec){
 }
 
 /* ---------------------------------------------------------
-   ブラウザの印刷機能を使わず、PDFファイルを直接作成する。
-   iOS Safariの「自動印刷の確認ダイアログ」や、印刷時に付加される
-   URL／日付／ページ番号のフッターを避けるための方式。
+   ブラウザの印刷機能や画面のスクリーンショットには一切頼らず、
+   jsPDFでPDFの中身（文字・罫線）を直接描画して作成する方式。
+   iOS Safariの「印刷許可の確認」「印刷時に付くURL/日付/ページ番号の
+   フッター」「html2canvasが白紙になる不具合」のいずれも起こらない。
+   日本語表示には同じフォルダに置いた NotoSansJP-Regular.ttf を使う。
    --------------------------------------------------------- */
 function showPdfLoading(show){
   let el = document.getElementById('pdfLoading');
@@ -950,32 +912,211 @@ function showPdfLoading(show){
   el.style.display = show ? 'flex' : 'none';
 }
 
-async function exportPrintAreaAsPdf(filename){
-  if(typeof html2pdf === 'undefined'){
-    alert('PDF機能の読み込みに失敗しました。通信環境の良い場所で、ページを再読み込みしてから再度お試しください。');
-    return;
+let __jpFontBase64Cache = null;
+async function loadJpFontBase64(){
+  if(__jpFontBase64Cache) return __jpFontBase64Cache;
+  const res = await fetch('NotoSansJP-Regular.ttf');
+  if(!res.ok) throw new Error('font fetch failed: ' + res.status);
+  const buf = await res.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
   }
-  document.body.classList.add('pdf-mode');
+  __jpFontBase64Cache = btoa(binary);
+  return __jpFontBase64Cache;
+}
+// ページを開いた時点で先読みしておき、ボタンを押した時の待ち時間を減らす
+loadJpFontBase64().catch(()=>{ /* 押した時に改めてエラー表示するので、ここでは無視 */ });
+
+const PT_PER_MM = 2.834645669;
+
+async function buildAssessmentPdf(rec){
+  if(typeof window.jspdf === 'undefined'){
+    throw new Error('jsPDFが読み込まれていません');
+  }
+  const { jsPDF } = window.jspdf;
+  const fontB64 = await loadJpFontBase64();
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  doc.addFileToVFS('NotoSansJP-Regular.ttf', fontB64);
+  doc.addFont('NotoSansJP-Regular.ttf', 'NotoSansJP', 'normal');
+  doc.setFont('NotoSansJP', 'normal');
+
+  const mm = v => v * PT_PER_MM;
+  const pageW = mm(210), pageH = mm(297);
+  const marginTop = mm(15), marginLeft = mm(20), marginRight = mm(10), marginBottom = mm(9);
+  const contentW = pageW - marginLeft - marginRight;
+  const maxY = pageH - marginBottom;
+  let y = marginTop;
+
+  function boldText(text, x, yy, opts){
+    doc.text(text, x, yy, opts);
+    doc.text(text, x + 0.35, yy, opts); // 埋め込みフォントは通常太字のみのため、二重描画で疑似ボールド
+  }
+
+  doc.setFontSize(15);
+  boldText('ラポール恵比須入居者様　アセスメント・モニタリング', pageW/2, y, {align:'center'});
+  y += 18;
+
+  doc.setFontSize(10);
+  doc.setTextColor(85);
+  doc.text(settings.org + ' ／ ' + settings.station, pageW/2, y, {align:'center'});
+  doc.setTextColor(0);
+  y += 12;
+
+  // 利用者名ボックス
+  const boxH = 34;
+  doc.setLineWidth(2);
+  doc.setDrawColor(0);
+  doc.setFillColor(242,242,242);
+  doc.roundedRect(marginLeft, y, contentW, boxH, 3, 3, 'FD');
+  doc.setFontSize(14);
+  boldText('利用者名', marginLeft+16, y+22);
+  doc.setFontSize(24);
+  const nameX = marginLeft+80;
+  const residentName = rec.residentName || '';
+  boldText(residentName, nameX, y+25);
+  const nameW = doc.getTextWidth(residentName);
+  doc.setFontSize(13);
+  boldText('様', nameX+nameW+8, y+23);
+  y += boxH + 10;
+
+  // 評価日・評価者名・作成日（日付列は内容に合わせて幅を自動計算し、崩れを防ぐ）
+  const dateStr = fmtDate(rec.date);
+  const createdStr = rec.createdAt ? fmtDate(String(rec.createdAt).slice(0,10)) : '';
+  const metaH1 = 16, metaH2 = 18;
+  doc.setFontSize(10.5);
+  const dateW = Math.max(doc.getTextWidth(dateStr), doc.getTextWidth(createdStr));
+  doc.setFontSize(9.5);
+  const labelW = Math.max(doc.getTextWidth('評価日'), doc.getTextWidth('作成日'));
+  const c1w = Math.max(dateW, labelW) + 14;
+  const c3w = c1w;
+  const c2w = contentW - c1w - c3w;
+  doc.setLineWidth(0.75);
+  doc.setDrawColor(153);
+  doc.setFillColor(245,245,245);
+  doc.rect(marginLeft, y, c1w, metaH1, 'FD');
+  doc.rect(marginLeft+c1w, y, c2w, metaH1, 'FD');
+  doc.rect(marginLeft+c1w+c2w, y, c3w, metaH1, 'FD');
+  doc.setFontSize(9.5);
+  doc.setTextColor(0);
+  doc.text('評価日', marginLeft+6, y+11.5);
+  doc.text('評価者名', marginLeft+c1w+6, y+11.5);
+  doc.text('作成日', marginLeft+c1w+c2w+6, y+11.5);
+  y += metaH1;
+  doc.setFillColor(255,255,255);
+  doc.rect(marginLeft, y, c1w, metaH2, 'S');
+  doc.rect(marginLeft+c1w, y, c2w, metaH2, 'S');
+  doc.rect(marginLeft+c1w+c2w, y, c3w, metaH2, 'S');
+  doc.setFontSize(10.5);
+  doc.text(dateStr, marginLeft+6, y+13);
+  doc.text(rec.assessorName || '', marginLeft+c1w+6, y+13);
+  doc.text(createdStr, marginLeft+c1w+c2w+6, y+13);
+  y += metaH2 + 6;
+
+  // 7項目の表（項目名列は最長ラベルに合わせて自動計算）
+  doc.setFontSize(11);
+  const maxLabelW = Math.max(...CATEGORIES.map(c=>doc.getTextWidth(c.label)));
+  const nameColW = maxLabelW + 14;
+  const tagColW = Math.max(contentW*0.13, 70);
+  const textColW = contentW - nameColW - tagColW;
+  const cellPadX = 7, cellPadY = 5;
+  const textLineH = 11*1.38;
+
+  CATEGORIES.forEach(cat=>{
+    const text = (rec.texts && rec.texts[cat.key]) || '（記録なし）';
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(text, textColW - cellPadX*2);
+    const rowH = Math.max(24, lines.length*textLineH + cellPadY*2);
+
+    if(y + rowH > maxY){ doc.addPage(); y = marginTop; }
+
+    doc.setDrawColor(153);
+    doc.setLineWidth(0.75);
+    doc.setFillColor(238,238,238);
+    doc.rect(marginLeft, y, nameColW, rowH, 'FD');
+    doc.setFillColor(255,255,255);
+    doc.rect(marginLeft+nameColW, y, tagColW, rowH, 'S');
+    doc.rect(marginLeft+nameColW+tagColW, y, textColW, rowH, 'S');
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    boldText(cat.label, marginLeft+6, y+rowH/2+4);
+
+    const m = rec.meta && rec.meta[cat.key];
+    if(m && m.outcome==='ok'){
+      doc.setFontSize(9.5);
+      const tagText = '課題なし';
+      const tw = doc.getTextWidth(tagText);
+      const badgeW = tw + 20;
+      const badgeH = 13;
+      const bx = marginLeft+nameColW + (tagColW-badgeW)/2;
+      const by = y + rowH/2 - badgeH/2;
+      doc.setDrawColor(51);
+      doc.setLineWidth(0.75);
+      doc.roundedRect(bx, by, badgeW, badgeH, 6, 6, 'S');
+      boldText(tagText, bx+badgeW/2, by+badgeH/2+3.3, {align:'center'});
+    }
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    let ty = y + cellPadY + 8;
+    lines.forEach(line=>{
+      doc.text(line, marginLeft+nameColW+tagColW+cellPadX, ty);
+      ty += textLineH;
+    });
+
+    y += rowH;
+  });
+
+  y += 6;
+  // 備考
+  doc.setFontSize(11);
+  const remarksLines = doc.splitTextToSize(rec.remarks || '（なし）', contentW - 18);
+  const remarksLineH = 11*1.35;
+  const remarksH = Math.max(30, 14 + remarksLines.length*remarksLineH + 10);
+  if(y + remarksH > maxY){ doc.addPage(); y = marginTop; }
+  doc.setDrawColor(153);
+  doc.setLineWidth(0.75);
+  doc.setFillColor(255,255,255);
+  doc.rect(marginLeft, y, contentW, remarksH, 'S');
+  doc.setFontSize(11);
+  boldText('備考', marginLeft+9, y+15);
+  let ry = y+15+remarksLineH;
+  remarksLines.forEach(line=>{
+    doc.text(line, marginLeft+9, ry);
+    ry += remarksLineH;
+  });
+
+  return doc;
+}
+
+async function exportRecordAsPdf(rec, filename){
+  // Safari（特にiOS）は、クリックから時間差のある window.open() をポップアップとして
+  // ブロックしたり、白紙のタブを開いたりする。これを避けるため、PDFの中身ができる前に
+  // 先にタブだけ同期的に開いておき、あとから中身（PDFのURL）を差し込む。
+  const newTab = window.open('', '_blank');
+  if(newTab){
+    newTab.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PDF作成中</title></head>'+
+      '<body style="font-family:sans-serif;color:#555;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">'+
+      '<p>PDFを作成しています…</p></body></html>');
+  }
   showPdfLoading(true);
-  await new Promise(r=>setTimeout(r, 60)); // レイアウト確定を待つ
-  const el = document.getElementById('printArea');
-  const opt = {
-    filename: filename,
-    margin: [15,20,9,10], // [上,左,下,右] mm（画面印刷時の @page 余白と同じ）
-    image: { type:'jpeg', quality:0.98 },
-    html2canvas: { scale:2, useCORS:true, backgroundColor:'#ffffff' },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak: { mode:['avoid-all'] }
-  };
   try{
-    const blob = await html2pdf().set(opt).from(el).outputPdf('blob');
+    const doc = await buildAssessmentPdf(rec);
+    const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    if(newTab && !newTab.closed){
+      newTab.location.href = url;
+    } else {
+      window.open(url, '_blank');
+    }
   }catch(e){
     console.error(e);
-    alert('PDFの作成に失敗しました。時間をおいて再度お試しください。');
+    if(newTab && !newTab.closed){ newTab.close(); }
+    alert('PDFの作成に失敗しました。通信環境を確認のうえ、再度お試しください。');
   }finally{
-    document.body.classList.remove('pdf-mode');
     showPdfLoading(false);
   }
 }
@@ -985,7 +1126,7 @@ function downloadPdfReport(){
   const remarks = document.getElementById('resultRemarks').value;
   const createdDate = document.getElementById('resultCreatedDate').value || todayISO();
   session.createdDate = createdDate;
-  fillPrintArea({
+  const rec = {
     residentName: session.residentName,
     assessorName: session.assessorName,
     date: session.date,
@@ -993,17 +1134,16 @@ function downloadPdfReport(){
     texts: texts,
     meta: session.meta,
     remarks: remarks
-  });
+  };
   const fname = (session.residentName || 'アセスメント') + '_' + (session.date || todayISO()) + '.pdf';
-  exportPrintAreaAsPdf(fname);
+  exportRecordAsPdf(rec, fname);
 }
 
 function downloadPdfHistoryReport(){
   const rec = loadRecords().find(r=>r.id===currentHistoryRecordId);
   if(!rec) return;
-  fillPrintArea(rec);
   const fname = (rec.residentName || 'アセスメント') + '_' + (rec.date || '') + '.pdf';
-  exportPrintAreaAsPdf(fname);
+  exportRecordAsPdf(rec, fname);
 }
 
 /* =========================================================
