@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訪問看護 月次アセスメントアプリ</title>
+<style>
+  :root{
+    --main:#2d7a6e;
+    --main-dark:#1f5c53;
+    --accent:#e8b84b;
+    --bg:#f4f7f6;
+    --card:#ffffff;
+    --text:#26332f;
+    --sub:#6b7c76;
+    --danger:#c0533e;
+    --border:#dbe4e1;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.6;
+  }
+  header.appbar{
+    background:linear-gradient(135deg,var(--main),var(--main-dark));
+    color:#fff;
+    padding:14px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:sticky;
+    top:0;
+    z-index:50;
+    box-shadow:0 2px 8px rgba(0,0,0,.12);
+  }
+  header.appbar .title{font-size:1.05rem;font-weight:700;cursor:pointer;}
+  header.appbar .sub{font-size:.72rem;opacity:.85;}
+  header.appbar button.icon{
+    background:rgba(255,255,255,.18);
+    border:none;color:#fff;border-radius:8px;
+    padding:6px 10px;font-size:.8rem;cursor:pointer;
+  }
+  main{max-width:760px;margin:0 auto;padding:16px 14px 60px;}
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:16px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    border:1px solid var(--border);
+  }
+  h2{margin-top:0;font-size:1.05rem;color:var(--main-dark);}
+  h3{font-size:.95rem;color:var(--main-dark);margin:0 0 8px;}
+  label{display:block;font-size:.82rem;color:var(--sub);margin:12px 0 4px;}
+  input[type=text], input[type=date], select, textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);
+    border-radius:10px;font-size:.95rem;font-family:inherit;background:#fff;color:var(--text);
+  }
+  textarea{resize:vertical;min-height:80px;}
+  .btn{
+    display:inline-block;background:var(--main);color:#fff;border:none;
+    padding:12px 20px;border-radius:10px;font-size:.95rem;font-weight:600;
+    cursor:pointer;text-align:center;
+  }
+  .btn:hover{background:var(--main-dark);}
+  .btn.secondary{background:#fff;color:var(--main-dark);border:1px solid var(--main);}
+  .btn.secondary:hover{background:#eef6f4;}
+  .btn.danger{background:#fff;color:var(--danger);border:1px solid var(--danger);}
+  .btn.block{display:block;width:100%;margin-top:10px;}
+  .btn.ghost{background:transparent;color:var(--sub);border:1px solid var(--border);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row .btn{flex:1;}
+  .home-actions .btn{margin-bottom:10px;}
+  .opt-btn{
+    display:block;width:100%;text-align:left;background:#fff;
+    border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;
+    margin-bottom:10px;font-size:.95rem;cursor:pointer;line-height:1.5;
+    transition:.12s;
+  }
+  .opt-btn:hover{border-color:var(--main);background:#f0f8f6;}
+  .opt-btn:active{transform:scale(.99);}
+  .progress{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .progress .dot{
+    flex:1;min-width:30px;height:8px;border-radius:5px;background:var(--border);
+  }
+  .progress .dot.done{background:var(--main);}
+  .progress .dot.current{background:var(--accent);}
+  .cat-label{
+    display:inline-block;background:var(--main);color:#fff;font-size:.75rem;
+    padding:4px 12px;border-radius:20px;margin-bottom:10px;font-weight:600;
+  }
+  .hint{font-size:.8rem;color:var(--sub);background:#f0f8f6;border-left:3px solid var(--main);padding:8px 12px;border-radius:6px;margin-bottom:14px;}
+  .note{font-size:.82rem;color:#8a5a12;background:#fff6e6;border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:10px 0;}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:700;padding:4px 11px;border-radius:20px;margin:0 6px 8px 0;}
+  .badge.emergency{background:#fdeceb;color:var(--danger);border:1.3px solid var(--danger);}
+  .badge.report24{background:#fff6e6;color:#8a5a12;border:1.3px solid var(--accent);}
+  .badge.ok{background:#eaf6f2;color:var(--main-dark);border:1.3px solid var(--main);}
+  .badge.code{background:#eef1f0;color:var(--sub);border:1.3px solid var(--border);font-weight:600;}
+  .alert-banner{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.85rem;}
+  .alert-banner.danger{background:#fdeceb;border:1.5px solid var(--danger);color:#8a2c1e;}
+  .alert-banner.warn{background:#fff6e6;border:1.5px solid var(--accent);color:#8a5a12;}
+  .alert-banner.ok{background:#eaf6f2;border:1.5px solid var(--main);color:var(--main-dark);}
+  .alert-banner ul{margin:6px 0 0;padding-left:18px;}
+  .cat-badges{margin-bottom:8px;}
+  .summary-block{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .summary-block:last-child{border-bottom:none;}
+  .summary-block h4{margin:0 0 6px;font-size:.9rem;color:var(--main-dark);}
+  .summary-block textarea{min-height:60px;}
+  .meta-line{font-size:.82rem;color:var(--sub);margin-bottom:4px;}
+  .resident-item, .record-item{
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  }
+  .resident-item:hover, .record-item:hover{border-color:var(--main);}
+  .record-item .rdate{font-weight:600;color:var(--main-dark);}
+  .record-item .rsub{font-size:.78rem;color:var(--sub);}
+  .empty{color:var(--sub);font-size:.88rem;text-align:center;padding:30px 0;}
+  .top-back{background:none;border:none;color:var(--main-dark);font-size:.9rem;cursor:pointer;padding:0 0 12px;display:flex;align-items:center;gap:4px;}
+  .datalist-wrap{position:relative;}
+  #printArea{display:none;}
+  @media print{
+    @page{ size:A4; margin:15mm 10mm 9mm 20mm; }
+    header.appbar, .no-print{display:none !important;}
+    body{background:#fff;}
+    main{max-width:100%;padding:0;margin:0;}
+    #printArea{
+      display:block;
+      font-size:11pt;
+    }
+    .screen{display:none !important;}
+    #printArea .p-title{text-align:center;font-size:15pt;font-weight:700;margin-bottom:2pt;}
+    #printArea .p-facility{text-align:center;font-size:10pt;color:#555;margin-bottom:6pt;}
+    #printArea .p-resident{
+      border:2.5px solid #000;border-radius:3pt;padding:7pt 14pt;margin-bottom:8pt;
+      font-size:14pt;font-weight:700;background:#f2f2f2;letter-spacing:.5px;
+    }
+    #printArea .p-resident #pm-resident{font-size:24pt;margin:0 4pt;}
+    #printArea .p-resident-sama{font-size:13pt;font-weight:700;}
+    #printArea table.meta{width:100%;border-collapse:collapse;margin-bottom:6pt;}
+    #printArea table.meta td{border:1px solid #999;padding:3pt 7pt;font-size:10.5pt;line-height:1.3;}
+    #printArea table.meta tr:first-child td{font-weight:700;background:#f5f5f5;font-size:9.5pt;}
+    #printArea table.meta td:nth-child(1),#printArea table.meta td:nth-child(3){white-space:nowrap;width:1%;}
+    /* 1列の表形式：項目名・判定・内容を1行にまとめ、用紙の横幅をフルに使うことで
+       改行が減り、2段組より縦方向をコンパクトにできる */
+    table.p-cats{width:100%;border-collapse:collapse;margin-bottom:6pt;}
+    table.p-cats td{border:1px solid #999;padding:5pt 7pt;font-size:11pt;line-height:1.38;vertical-align:top;break-inside:avoid;}
+    table.p-cats tr{break-inside:avoid;}
+    table.p-cats td.cat-name{width:12%;font-weight:700;background:#eee;white-space:nowrap;}
+    table.p-cats td.cat-tag{width:14%;text-align:center;font-size:9.5pt;font-weight:700;white-space:nowrap;}
+    table.p-cats td.cat-text{white-space:pre-wrap;}
+    #printArea .p-tag-ok{display:inline-block;font-size:9.5pt;font-weight:700;padding:1pt 6pt;border-radius:8pt;border:1px solid #333;white-space:nowrap;}
+    #printArea .p-remarks{border:1px solid #999;padding:6pt 9pt;break-inside:avoid;}
+    #printArea .p-remarks h4{margin:0 0 3pt;font-size:11pt;}
+    #printArea .p-remarks p{margin:0;font-size:11pt;line-height:1.35;white-space:pre-wrap;}
+  }
+  footer.foot{text-align:center;color:var(--sub);font-size:.72rem;padding:20px 0;}
+</style>
+</head>
+<body>
+
+<header class="appbar no-print">
+  <div>
+    <div class="title" onclick="goHome()">🏠 訪問看護 月次アセスメント</div>
+    <div class="sub" id="facilitySub"></div>
+  </div>
+  <button class="icon" onclick="openSettings()">⚙ 設定</button>
+</header>
+
+<main>
+
+  <!-- HOME -->
+  <div class="screen" id="screen-home">
+    <div class="card home-actions">
+      <h2>メニュー</h2>
+      <button class="btn block" onclick="startNewAssessment()">＋ 新規アセスメントを開始</button>
+      <button class="btn block secondary" onclick="showHistoryResidents()">📖 履歴を見る</button>
+    </div>
+    <div class="card">
+      <h3>このアプリについて</h3>
+      <p style="font-size:.85rem;color:var(--sub);margin:0;">
+        施設入居者への月次訪問看護アセスメント（呼吸・水分・代謝・循環・浮腫・皮膚トラブル・認知症の7項目）を、
+        質問に答えていくだけで記録できます。記録はこの端末のブラウザ内に保存されます（他の端末とは同期されません）。
+        大切な記録は「印刷 / PDF保存」で必ず控えを残してください。
+      </p>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings" style="display:none;">
+    <button class="top-back" onclick="goHome()">← 戻る</button>
+    <div class="card">
+      <h2>設定</h2>
+      <label>事業所名（法人名）</label>
+      <input type="text" id="set-org">
+      <label>事業所名（ステーション名）</label>
+      <input type="text" id="set-station">
+      <button class="btn block" onclick="saveSettings()">保存</button>
+    </div>
+    <div class="card">
+      <h3>データの管理</h3>
+      <p style="font-size:.82rem;color:var(--sub);">全データはこの端末のブラウザ内のみに保存されています。機種変更やブラウザのデータ消去で失われますのでご注意ください。</p>
+      <button class="btn danger block" onclick="clearAllData()">全データを削除する</button>
+    </div>
+  </div>
+
+  <!-- NEW ASSESSMENT SETUP -->
+  <div class="screen" id="screen-setup" style="display:none;">
+    <button class="top-back" onclick="goHome()">← 戻る</button>
+    <div class="card">
+      <h2>アセスメント情報の入力</h2>
+      <label>利用者名</label>
+      <input type="text" id="input-resident" list="residentList" placeholder="例）山田 太郎">
+      <datalist id="residentList"></datalist>
+
+      <label>評価者名</label>
+      <input type="text" id="input-assessor" list="assessorList" placeholder="評価者名を入力または選択">
+      <datalist id="assessorList"></datalist>
+
+      <label>評価日</label>
+      <input type="date" id="input-date">
+
+      <button class="btn block" style="margin-top:18px;" onclick="beginWizard()">アセスメントを開始する</button>
+    </div>
+  </div>
+
+  <!-- WIZARD -->
+  <div class="screen" id="screen-wizard" style="display:none;">
+    <button class="top-back" onclick="confirmExitWizard()">← 中断してホームへ</button>
+    <div class="progress" id="wizardProgress"></div>
+    <div class="card">
+      <span class="cat-label" id="wizCatLabel"></span>
+      <h2 id="wizQuestion"></h2>
+      <div id="wizHint" class="hint" style="display:none;"></div>
+      <div id="wizOptions"></div>
+      <button class="btn ghost block" id="wizBackBtn" onclick="wizardBack()">↩ 前の質問に戻る</button>
+    </div>
+  </div>
+
+  <!-- CATEGORY LEAF SUMMARY -->
+  <div class="screen" id="screen-catsummary" style="display:none;">
+    <div class="progress" id="catsumProgress"></div>
+    <div class="card">
+      <span class="cat-label" id="catsumLabel"></span>
+      <h2>この項目の評価結果</h2>
+      <div class="cat-badges" id="catsumBadge"></div>
+      <div id="catsumNote"></div>
+      <label>内容（必要に応じて編集できます）</label>
+      <textarea id="catsumText"></textarea>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn secondary" onclick="redoCategory()">この項目をやり直す</button>
+        <button class="btn" id="catsumNextBtn" onclick="confirmCategory()">次の項目へ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT / REPORT -->
+  <div class="screen" id="screen-result" style="display:none;">
+    <button class="top-back" onclick="goHome()">← ホームへ</button>
+    <div class="card">
+      <h2>アセスメント結果（総括）</h2>
+      <div class="meta-line" id="resultMeta"></div>
+      <label>作成日</label>
+      <input type="date" id="resultCreatedDate">
+    </div>
+    <div id="resultAlert"></div>
+    <div class="card" id="resultCategoriesCard"></div>
+    <div class="card">
+      <h3>備考</h3>
+      <textarea id="resultRemarks" placeholder="特記事項があれば入力してください"></textarea>
+    </div>
+    <div class="row no-print">
+      <button class="btn" onclick="saveAssessment()">💾 この内容を保存する</button>
+      <button class="btn secondary" onclick="printReport()">🖨 印刷 / PDF保存</button>
+    </div>
+  </div>
+
+  <!-- HISTORY: RESIDENT LIST -->
+  <div class="screen" id="screen-hist-residents" style="display:none;">
+    <button class="top-back" onclick="goHome()">← ホームへ</button>
+    <div class="card">
+      <h2>履歴：利用者を選択</h2>
+      <div id="histResidentList"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY: RECORD LIST FOR RESIDENT -->
+  <div class="screen" id="screen-hist-records" style="display:none;">
+    <button class="top-back" onclick="showHistoryResidents()">← 利用者一覧へ</button>
+    <div class="card">
+      <h2 id="histResidentName"></h2>
+      <div id="histRecordList"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY: VIEW A RECORD -->
+  <div class="screen" id="screen-hist-view" style="display:none;">
+    <button class="top-back no-print" onclick="backToResidentRecords()">← 一覧へ戻る</button>
+    <div class="card">
+      <h2>アセスメント結果（記録）</h2>
+      <div class="meta-line" id="histViewMeta"></div>
+    </div>
+    <div id="histViewAlert"></div>
+    <div class="card" id="histViewCategoriesCard"></div>
+    <div class="card" id="histViewRemarksCard"></div>
+    <div class="row no-print">
+      <button class="btn secondary" onclick="printHistoryReport()">🖨 印刷 / PDF保存</button>
+      <button class="btn danger" onclick="deleteHistoryRecord()">この記録を削除</button>
+    </div>
+  </div>
+
+</main>
+
+<footer class="foot no-print">訪問看護 月次アセスメントアプリ（端末内保存版）</footer>
+
+<!-- PRINT AREA -->
+<div id="printArea">
+  <div class="p-title">ラポール恵比須入居者様　アセスメント・モニタリング</div>
+  <div class="p-facility" id="printFacility"></div>
+  <div id="pm-alert"></div>
+  <div class="p-resident">利用者名　<span id="pm-resident"></span><span class="p-resident-sama">様</span></div>
+  <table class="meta">
+    <tr><td style="width:14%;">評価日</td><td>評価者名</td><td style="width:14%;">作成日</td></tr>
+    <tr><td id="pm-date"></td><td id="pm-assessor"></td><td id="pm-created"></td></tr>
+  </table>
+  <div id="printCats"></div>
+  <div class="p-remarks"><h4>備考</h4><p id="pm-remarks"></p></div>
+</div>
+
+<script>
+/* =========================================================
+   1. アセスメント決定木データ（元Excelの分岐ロジックを再現）
+   ========================================================= */
+const CATEGORIES = [
+  { key:'breath', label:'呼吸', start:'Q1', nodes:{
+    Q1:{ q:'呼吸数は8回/分以上で、呼吸リズムは正常ですか？', hint:'①呼吸8回/分以上　AND　②呼吸リズム正常', options:[
+      { label:'はい（8回/分以上かつリズム正常）', text:'呼吸8回/分以上で、呼吸リズムは正常である。', next:'Q2' },
+      { label:'いいえ（8回/分未満、またはリズム異常）', text:'呼吸8回/分未満、またはリズムが異常であり、異常呼吸パターンがみられる。', next:null, code:'a', urgency:'emergency' }
+    ]},
+    Q2:{ q:'呼吸24回/分以下、かつ体温は38.5℃以下または平熱+1.5℃以内ですか？', hint:'①呼吸24回/分以下　AND　②体温38.5℃以下もしくは平熱+1.5℃以内', options:[
+      { label:'はい（両方とも該当）', text:'呼吸24回/分以下で、体温38.5℃以下か平熱+1.5℃以内である。', next:'Q3' },
+      { label:'いいえ（いずれか該当せず）', text:'呼吸24回/分以上、または体温38.5℃以上か平熱+1.5℃以上であり、感染の可能性がある。', next:null, code:'b', urgency:'report24' }
+    ]},
+    Q3:{ q:'副雑音はありませんか？', hint:'聴診で副雑音の有無を確認してください。', options:[
+      { label:'はい（副雑音なし）', text:'副雑音なし、', next:'Q8' },
+      { label:'いいえ（副雑音あり）', text:'副雑音あり、', next:'Q4' }
+    ]},
+    Q4:{ q:'断続性副雑音がありますか？', hint:'', options:[
+      { label:'はい（断続性副雑音あり）', text:'断続性副雑音があり、', next:'Q5' },
+      { label:'いいえ（断続性副雑音なし）', text:'断続性副雑音はなく、気道狭窄がみられる。', next:null, code:'c' }
+    ]},
+    Q5:{ q:'連続性副雑音がありますか？', hint:'', options:[
+      { label:'はい（連続性副雑音あり）', text:'連続性副雑音があり、', next:'Q7' },
+      { label:'いいえ（連続性副雑音なし）', text:'連続性副雑音はなく、', next:'Q6' }
+    ]},
+    Q6:{ q:'粗い断続性副雑音がありますか？', hint:'', options:[
+      { label:'はい（粗い断続性副雑音あり）', text:'粗い断続性副雑音があり、気道内、過剰な水分貯留がみられる。', next:null, code:'e' },
+      { label:'いいえ（粗い断続性副雑音なし）', text:'粗い断続性副雑音はなく、拘束性肺疾患が疑われる。', next:null, code:'d' }
+    ]},
+    Q7:{ q:'粗い断続性副雑音がありますか？', hint:'', options:[
+      { label:'はい（粗い断続性副雑音あり）', text:'粗い断続性副雑音があり、気道内、過剰な水分貯留／気道狭窄がみられる。', next:null, code:'g' },
+      { label:'いいえ（粗い断続性副雑音なし）', text:'粗い断続性副雑音はなく、拘束性肺疾患／気道狭窄が疑われる。', next:null, code:'f' }
+    ]},
+    Q8:{ q:'適切な部位で本来の呼吸音が聴取できますか？', hint:'', options:[
+      { label:'はい（聴取あり）', text:'適切な部位で本来の呼吸音の聴取あり、', next:'Q9' },
+      { label:'いいえ（聴取なし）', text:'適切な部位で本来の呼吸音の聴取なし、肺炎・腫瘍の可能性がある。', next:null, code:'h' }
+    ]},
+    Q9:{ q:'人工呼吸器は装着していませんか？', hint:'', options:[
+      { label:'はい（未装着）', text:'人工呼吸器未装着である。', next:null, outcome:'ok' },
+      { label:'いいえ（装着中）', text:'人工呼吸器を装着しており、人工呼吸器管理が必要である。', next:null, code:'i' }
+    ]}
+  }},
+  { key:'water', label:'水分', start:'Q1', nodes:{
+    Q1:{ q:'1日の飲水量は約500ml以上ありますか？', hint:'', options:[
+      { label:'飲水量約500ml/日以上', text:'飲水量約500ml/日以上、', next:'Q6' },
+      { label:'飲水量約500ml/日以下', text:'飲水量約500ml/日以下、', next:'Q2' }
+    ]},
+    Q2:{ q:'尿量は約4000ml/日以下ですか？', hint:'', options:[
+      { label:'尿量約4000ml/日以下である。', text:'尿量約4000ml/日以下である。', next:'Q3' },
+      { label:'尿量約4000ml/日以上（多尿による水分喪失過剰）。', text:'尿量約4000ml/日以上で、多尿による水分喪失過剰である。', next:null, code:'a', urgency:'emergency' }
+    ]},
+    Q3:{ q:'意識障害はありますか？', hint:'', options:[
+      { label:'意識障害なし。', text:'意識障害なし。', next:'Q4' },
+      { label:'意識障害あり（高度な脱水状態が疑われる）。', text:'意識障害があり、高度な脱水状態が疑われる。', next:null, code:'b', urgency:'emergency' }
+    ]},
+    Q4:{ q:'口渇・尿量減少・発熱・粘膜皮膚乾燥・脱力感などの症状はありますか？', hint:'①口渇なし②72時間以内の尿量減少なし③体温38.5℃以下もしくは平熱+1.5℃以内④粘膜・皮膚乾燥なし⑤脱力感なし', options:[
+      { label:'いずれもなし。', text:'口渇、72時間以内の尿量減少、体温38.5℃以上、粘膜・皮膚の乾燥、脱力感なし。', next:'Q5' },
+      { label:'あり（中～軽度の脱水状態が疑われる）。', text:'口渇、72時間以内の尿量減少、体温38.5℃以上、粘膜・皮膚の乾燥、脱力感あり、中～軽度の脱水状態が疑われる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q5:{ q:'下痢・発熱・嘔吐・多量発汗はありますか？', hint:'', options:[
+      { label:'あり（水分喪失による脱水のリスク状態）。', text:'下痢、発熱、嘔吐、多量発汗があり、脱水のリスク状態：水分喪失が疑われる。', next:null, code:'d', urgency:'report24' },
+      { label:'なし（飲水量不足による脱水のリスク状態）。', text:'下痢、発熱、嘔吐、多量発汗なし、脱水のリスク状態：飲水量不足が疑われる。', next:null, code:'e' }
+    ]},
+    Q6:{ q:'尿量は500ml/日以上ありますか？', hint:'', options:[
+      { label:'尿量500ml/日以上', text:'尿量500ml/日以上、', next:'Q7' },
+      { label:'尿量500ml/日以下（無尿・乏尿が疑われる）', text:'尿量500ml/日以下で無尿・乏尿が疑われる。', next:null, code:'f', urgency:'emergency' }
+    ]},
+    Q7:{ q:'浮腫はありますか？', hint:'', options:[
+      { label:'浮腫あり。', text:'浮腫あり。', next:null, code:'g', note:'「浮腫」のフローチャートで詳しく評価してください。' },
+      { label:'浮腫なし。', text:'浮腫なし。', next:'Q8' }
+    ]},
+    Q8:{ q:'飲水量は体重×25ml/日（または1L/日）以上ありますか？', hint:'①25ml/日×体重以上　OR　②1L/日以上', options:[
+      { label:'25ml/日×体重以上、1ℓ/日以上ある。', text:'飲水量25ml/日×体重以上、1ℓ/日以上。', next:'Q9' },
+      { label:'25ml/日×体重以下、1ℓ/日以下（脱水リスクが予測される）。', text:'飲水量25ml/日×体重以下、1ℓ/日以下であり、脱水のリスク状態：飲水量不足が予測される。', next:null, code:'e' }
+    ]},
+    Q9:{ q:'下痢・発熱・嘔吐・多量発汗はありますか？', hint:'', options:[
+      { label:'なし（課題なし）。', text:'下痢、発熱、嘔吐、多量発汗なし。', next:null, outcome:'ok' },
+      { label:'あり（水分喪失による脱水のリスク状態が予測される）。', text:'下痢、発熱、嘔吐、多量発汗による水分喪失で、脱水のリスク状態：水分喪失が予測される。', next:null, code:'d', urgency:'report24' }
+    ]}
+  }},
+  { key:'metabolism', label:'代謝', start:'Q1', nodes:{
+    Q1:{ q:'見た目で1週間以内にやせていませんか？', hint:'', options:[
+      { label:'はい（やせていない）。', text:'見た目で1週間以内に痩せていない。', next:'Q2' },
+      { label:'いいえ（やせている）。', text:'見た目で1週間以内に痩せており、急激なやせがみられる。', next:null, code:'a', urgency:'report24' }
+    ]},
+    Q2:{ q:'見た目で1週間以内に太っていませんか？', hint:'', options:[
+      { label:'はい（太っていない）。', text:'見た目で1週間以内に太っていない。', next:'Q3' },
+      { label:'いいえ（太っている）。', text:'見た目で1週間以内に太っている。', next:null, code:'b', note:'「浮腫」のフローチャートで詳しく評価してください。' }
+    ]},
+    Q3:{ q:'1週間以内に食事量の変化はありませんか？', hint:'', options:[
+      { label:'はい（変化なし）。', text:'1週間以内に食事量に変化なし。', next:'Q6' },
+      { label:'いいえ（変化あり）。', text:'1週間以内に食事量に変化あり。', next:'Q4' }
+    ]},
+    Q4:{ q:'栄養不足を示す身体所見はありませんか？', hint:'①活動性の低下なし②皮膚乾燥・点状出血・脆弱・創傷治癒遅延なし③浮腫なし④口腔粘膜異常なし⑤爪/毛髪異常なし⑥筋肉の減少なし', options:[
+      { label:'はい（いずれもみられない）。', text:'活動性の低下、皮膚乾燥・点状出血・脆弱・創傷治癒遅延、浮腫、口腔粘膜異常、爪や毛髪の異常、筋肉の減少、いずれもみられない。', next:'Q5' },
+      { label:'いいえ（該当あり、栄養不足が考えられる）。', text:'活動性の低下、皮膚乾燥・点状出血・脆弱・創傷治癒遅延、浮腫、口腔粘膜異常、爪や毛髪の異常、筋肉の減少のいずれかがあり、栄養不良が考えられる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q5:{ q:'健康状態は改善方向にありますか？', hint:'', options:[
+      { label:'はい（改善方向）。', text:'健康状態改善方向であり、課題なし。', next:null, outcome:'ok' },
+      { label:'いいえ（改善傾向がない）。', text:'健康状態改善傾向がなく、健康障害（状態悪化）のリスク状態が考えられる。', next:null, code:'d' }
+    ]},
+    Q6:{ q:'下痢はありませんか？', hint:'', options:[
+      { label:'はい（下痢なし、課題なし）。', text:'下痢なし。', next:null, outcome:'ok' },
+      { label:'いいえ（下痢あり）。', text:'下痢がみられる。', next:null, code:'e', urgency:'report24' }
+    ]}
+  }},
+  { key:'circulation', label:'循環', start:'Q1', nodes:{
+    Q1:{ q:'呼吸状態は安楽ですか？', hint:'', options:[
+      { label:'はい（安楽である）。', text:'呼吸状態は安楽である。', next:'Q8' },
+      { label:'いいえ（安楽ではない）。', text:'呼吸状態は安楽ではない。', next:'Q2' }
+    ]},
+    Q2:{ q:'意識レベルの低下はありませんか？', hint:'', options:[
+      { label:'はい（低下なし）。', text:'意識レベル低下なし。', next:'Q3' },
+      { label:'いいえ（低下あり）。', text:'意識レベル低下がみられる。', next:null, code:'a', urgency:'emergency' }
+    ]},
+    Q3:{ q:'72時間以内に呼吸困難の訴えの増強はありませんか？', hint:'', options:[
+      { label:'はい（増強なし）。', text:'72時間以内呼吸困難の訴え増強なし。', next:'Q7' },
+      { label:'いいえ（増強あり）。', text:'72時間以内に呼吸困難の訴え増強がある。', next:'Q4' }
+    ]},
+    Q4:{ q:'労作時のみの呼吸困難の訴えはありますか？', hint:'', options:[
+      { label:'はい（労作時のみ訴えあり）。', text:'労作時のみ呼吸困難の訴えがあり、急に発症した呼吸困難の訴えである。', next:null, code:'d', urgency:'report24' },
+      { label:'いいえ（該当なし）。', text:'', next:'Q5' }
+    ]},
+    Q5:{ q:'体温は38.5℃以下または平熱+1.5℃以内ですか？', hint:'①38.5℃以下　OR　②平熱+1.5℃以内', options:[
+      { label:'はい（該当）。', text:'体温38.5℃以下か平熱+1.5℃以内である。', next:'Q6' },
+      { label:'いいえ（該当せず、感染の可能性）。', text:'体温38.5℃以上か平熱+1.5℃以上であり、感染の可能性がある。', next:null, code:'b', urgency:'report24' }
+    ]},
+    Q6:{ q:'粗い断続性副雑音はありませんか？', hint:'', options:[
+      { label:'はい（なし）。', text:'粗い断続性副雑音なく、急に発症した呼吸困難の訴えである。', next:null, code:'d', urgency:'report24' },
+      { label:'いいえ（あり）。', text:'粗い断続性副雑音があり、顕在する循環機能障害がみられる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q7:{ q:'粗い断続性副雑音はありませんか？', hint:'', options:[
+      { label:'はい（なし）。', text:'粗い断続性副雑音なく、循環機能障害のリスク状態である。', next:null, code:'e', urgency:'report24' },
+      { label:'いいえ（あり）。', text:'粗い断続性副雑音があり、顕在する循環機能障害がみられる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q8:{ q:'浮腫はありませんか？', hint:'', options:[
+      { label:'はい（浮腫なし）。', text:'浮腫なし。', next:'Q9' },
+      { label:'いいえ（浮腫あり）。', text:'浮腫あり。', next:null, code:'f', note:'「浮腫」のフローチャートで詳しく評価してください。' }
+    ]},
+    Q9:{ q:'活気があり、湿性の咳・夜間の尿量増加がなく、血圧・脈拍は基準内ですか？', hint:'①活気あり②湿性の咳なし③夜間の尿量増加なし④収縮期血圧110～150mmHg以内⑤P=HR=50～80回/分', options:[
+      { label:'はい（すべて該当、課題なし）。', text:'活気あり、湿性の咳なし、夜間の尿量増加なし、収縮期血圧110～150mmHg以内、P=HR=50～80回/分であり、課題なし。', next:null, outcome:'ok' },
+      { label:'いいえ（該当せず、循環機能障害のリスク状態）。', text:'活気なし、湿性の咳あり、夜間の尿量増加あり、または血圧・脈拍が基準外であり、循環機能障害のリスク状態である。', next:null, code:'e', urgency:'report24' }
+    ]}
+  }},
+  { key:'edema', label:'浮腫', start:'Q1', nodes:{
+    Q1:{ q:'局所性の浮腫ですか？', hint:'', options:[
+      { label:'はい（局所性浮腫である）。', text:'局所性浮腫である。', next:'Q5' },
+      { label:'いいえ（局所性でない浮腫である）。', text:'局所性でない浮腫である。', next:'Q2' }
+    ]},
+    Q2:{ q:'発生・症状悪化から72時間以内で、原因の確定診断がありますか？', hint:'①発生/症状悪化から72時間以内　AND　②原因の確定診断あり', options:[
+      { label:'はい（両方該当）。', text:'浮腫の発生・症状悪化から72時間以内で、原因の確定診断がある。', next:'Q3' },
+      { label:'いいえ（該当せず）。', text:'浮腫の発生・症状悪化から72時間以上経過して原因の確定診断がなく、全身性浮腫：状態悪化が考えられる。', next:null, code:'a', urgency:'emergency' }
+    ]},
+    Q3:{ q:'呼吸困難の訴えなし、尿量減少なし、倦怠感の増強なしですか？', hint:'①呼吸困難の訴えなし②尿量減少なし③倦怠感の増強なし', options:[
+      { label:'はい（すべて該当）。', text:'呼吸困難の訴え、尿量減少、倦怠感の増強なし。', next:'Q4' },
+      { label:'いいえ（該当あり）。', text:'呼吸困難の訴え、尿量減少、倦怠感の増強があり、全身性浮腫：状態悪化のリスク状態が考えられる。', next:null, code:'b', urgency:'report24' }
+    ]},
+    Q4:{ q:'浮腫原因の診断・治療があり、治療に対するコンプライアンスは良好ですか？', hint:'①浮腫原因の診断/治療あり②治療に対するコンプライアンス良好', options:[
+      { label:'はい（両方該当）。', text:'浮腫原因の診断・治療があり、治療に対するコンプライアンスは良好であり、全身性浮腫がみられる。', next:null, code:'d' },
+      { label:'いいえ（コンプライアンス不良）。', text:'浮腫原因の診断・治療はあるが、治療に対するコンプライアンスが不良であり、全身性浮腫：コンプライアンス不良の状態である。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q5:{ q:'炎症所見はありませんか？', hint:'', options:[
+      { label:'はい（炎症所見なし）。', text:'炎症所見なし。', next:'Q6' },
+      { label:'いいえ（炎症所見あり）。', text:'炎症所見あり、局所性浮腫：炎症性浮腫の疑いがある。', next:null, code:'e', urgency:'report24' }
+    ]},
+    Q6:{ q:'リンパ性浮腫の確定診断はありませんか？', hint:'', options:[
+      { label:'はい（確定診断なし）。', text:'リンパ性浮腫の確定診断がなく、局所性浮腫：静脈性浮腫の疑いがある。', next:null, code:'g' },
+      { label:'いいえ（確定診断あり）。', text:'リンパ性浮腫の確定診断があり、局所性浮腫：リンパ性浮腫がみられる。', next:null, code:'f' }
+    ]}
+  }},
+  { key:'skin', label:'皮膚トラブル', start:'Q1', nodes:{
+    Q1:{ q:'患部の状態は1週間前より治癒方向にありますか？', hint:'', options:[
+      { label:'はい（治癒方向、継続処置）。', text:'患部の状態が1週間前より治癒方向であり、継続処置とする。', next:null, outcome:'ok' },
+      { label:'いいえ（治癒方向ではない）。', text:'患部の状態が1週間前より治癒方向ではない。', next:'Q2' }
+    ]},
+    Q2:{ q:'患部への異物（カテーテル・カニューレ等）の挿入はありませんか？', hint:'', options:[
+      { label:'はい（挿入なし）。', text:'患部に異物挿入なし、', next:'Q4' },
+      { label:'いいえ（挿入あり）。', text:'患部に異物挿入あり、', next:'Q3' }
+    ]},
+    Q3:{ q:'異物による摩擦・圧迫刺激はありませんか？', hint:'', options:[
+      { label:'はい（刺激・圧迫はない）。', text:'患部の刺激・圧迫はなく、不適切な処置方法・薬剤使用が疑われる。', next:null, code:'b', urgency:'report24' },
+      { label:'いいえ（摩擦・圧迫刺激がある）。', text:'患部の異物による摩擦・圧迫刺激がある。', next:null, code:'a' }
+    ]},
+    Q4:{ q:'患部に感染徴候はありませんか？', hint:'', options:[
+      { label:'はい（感染徴候なし）。', text:'患部の感染徴候なし、', next:'Q5' },
+      { label:'いいえ（感染が考えられる）。', text:'患部の感染が考えられる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q5:{ q:'患部への圧迫はありませんか？', hint:'', options:[
+      { label:'はい（圧迫なし）。', text:'患部の圧迫なし。', next:'Q6' },
+      { label:'いいえ（圧迫・ズレがある）。', text:'患部の圧迫・ズレがある。', next:null, code:'d' }
+    ]},
+    Q6:{ q:'患部の汚染はありませんか？', hint:'', options:[
+      { label:'はい（汚染なし）。', text:'患部の汚染はない。', next:'Q7' },
+      { label:'いいえ（汚染がある）。', text:'患部の汚染がある。', next:null, code:'e' }
+    ]},
+    Q7:{ q:'掻痒感による掻き傷はありませんか？', hint:'', options:[
+      { label:'はい（掻き傷なし）。', text:'掻き傷なし。', next:'Q8' },
+      { label:'いいえ（掻き傷がある）。', text:'掻痒感による患部の掻き傷がある。', next:null, code:'f' }
+    ]},
+    Q8:{ q:'循環不全による末梢冷感はありませんか？', hint:'', options:[
+      { label:'はい（末梢冷感なし）。', text:'末梢冷感なし。', next:'Q9' },
+      { label:'いいえ（末梢冷感がある）。', text:'循環不全による末梢冷感がある。', next:null, code:'g' }
+    ]},
+    Q9:{ q:'皮膚トラブルの発症から1週間以内ですか？', hint:'', options:[
+      { label:'はい（1週間以内）。', text:'皮膚トラブルの発症から1週間以内であり、皮膚トラブルの出現である。', next:null, code:'i' },
+      { label:'いいえ（1週間以上経過）。', text:'患部の状態が発症から1週間以上たっており、不適切な処置方法・薬剤使用の疑いがある。', next:null, code:'h', urgency:'report24' }
+    ]}
+  }},
+  { key:'dementia', label:'認知症', start:'Q1', nodes:{
+    Q1:{ q:'「認知症」の診断があるか、受診を継続中・検討中ですか？', hint:'①「認知症」の診断あり　OR　②受診継続中／検討中', options:[
+      { label:'はい（診断あり、または受診継続・検討中）。', text:'認知症の診断があるか、受診を継続または検討中である。', next:'Q3' },
+      { label:'いいえ（診断なし、受診の予定もない）。', text:'認知症の診断がなく、受診の予定もない。', next:'Q2' }
+    ]},
+    Q2:{ q:'「長谷川式テスト」で20点以上ですか？', hint:'', options:[
+      { label:'はい（20点以上、経過観察）。', text:'「長谷川式テスト」で20点以上であり、経過観察とする。', next:null, outcome:'ok' },
+      { label:'いいえ（20点未満）。', text:'「長谷川式テスト」で20点未満であり、認知症の疑い＋行動障害がみられる。', next:null, code:'a', urgency:'report24' }
+    ]},
+    Q3:{ q:'内服コンプライアンスは良好ですか？', hint:'', options:[
+      { label:'はい（良好）。', text:'認知症の診断あり（または受診継続・検討中）で内服コンプライアンス良好であるが、行動障害がみられる。', next:null, code:'c', urgency:'report24' },
+      { label:'いいえ（不良）。', text:'認知症の診断あり（または受診継続・検討中）で内服コンプライアンス不良であり、行動障害がみられる。', next:null, code:'b', urgency:'report24' }
+    ]}
+  }}
+];
+
+const ASSESSORS = ['西野みはる','松岡綾','河野貴子','川本美香','谷口由里','山内千由紀'];
+const STORAGE_KEY = 'nursing_assessment_records_v1';
+const SETTINGS_KEY = 'nursing_assessment_settings_v1';
+
+/* =========================================================
+   2. 状態管理・ユーティリティ
+   ========================================================= */
+let settings = loadSettings();
+let session = null; // 現在進行中のアセスメント
+let currentHistoryResident = null;
+let currentHistoryRecordId = null;
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { org:'株式会社アクティブモア', station:'愛ほっと訪問看護ステーション' };
+}
+function saveSettingsToStorage(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+
+function loadRecords(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return [];
+}
+function saveRecords(records){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+function fmtDate(d){
+  if(!d) return '';
+  const parts = d.split('-');
+  if(parts.length===3) return parts[0]+'年'+parseInt(parts[1])+'月'+parseInt(parts[2])+'日';
+  return d;
+}
+function todayISO(){
+  const t = new Date();
+  const mm = String(t.getMonth()+1).padStart(2,'0');
+  const dd = String(t.getDate()).padStart(2,'0');
+  return t.getFullYear()+'-'+mm+'-'+dd;
+}
+function uid(){ return 'a'+Date.now()+Math.random().toString(36).slice(2,8); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.style.display='none');
+  document.getElementById(id).style.display='block';
+  window.scrollTo(0,0);
+}
+
+function refreshHeaderSub(){
+  document.getElementById('facilitySub').textContent = settings.org + ' ／ ' + settings.station;
+}
+
+/* =========================================================
+   3. ホーム・設定
+   ========================================================= */
+function goHome(){ showScreen('screen-home'); }
+
+function openSettings(){
+  document.getElementById('set-org').value = settings.org;
+  document.getElementById('set-station').value = settings.station;
+  showScreen('screen-settings');
+}
+function saveSettings(){
+  settings.org = document.getElementById('set-org').value.trim() || settings.org;
+  settings.station = document.getElementById('set-station').value.trim() || settings.station;
+  saveSettingsToStorage();
+  refreshHeaderSub();
+  goHome();
+}
+function clearAllData(){
+  if(confirm('本当にすべてのアセスメント記録を削除しますか？この操作は取り消せません。')){
+    localStorage.removeItem(STORAGE_KEY);
+    alert('削除しました。');
+    goHome();
+  }
+}
+
+/* =========================================================
+   4. 新規アセスメントのセットアップ
+   ========================================================= */
+function startNewAssessment(){
+  const records = loadRecords();
+  const residents = [...new Set(records.map(r=>r.residentName))];
+  const dl = document.getElementById('residentList');
+  dl.innerHTML = residents.map(r=>'<option value="'+escapeHtml(r)+'">').join('');
+  const adl = document.getElementById('assessorList');
+  adl.innerHTML = ASSESSORS.map(a=>'<option value="'+escapeHtml(a)+'">').join('');
+  document.getElementById('input-resident').value='';
+  document.getElementById('input-assessor').value='';
+  document.getElementById('input-date').value = todayISO();
+  showScreen('screen-setup');
+}
+
+function beginWizard(){
+  const resident = document.getElementById('input-resident').value.trim();
+  const assessor = document.getElementById('input-assessor').value.trim();
+  const date = document.getElementById('input-date').value || todayISO();
+  if(!resident){ alert('利用者名を入力してください。'); return; }
+  if(!assessor){ alert('評価者名を入力してください。'); return; }
+
+  session = {
+    residentName: resident,
+    assessorName: assessor,
+    date: date,
+    catIndex: 0,
+    texts: {},           // key -> 確定済みテキスト
+    meta: {},            // key -> {code, urgency, outcome} 判定結果の付帯情報
+    // wizard内部状態
+    path: [],            // {node, optIndex, added(bool)}
+    curNode: CATEGORIES[0].start
+  };
+  renderWizard();
+  showScreen('screen-wizard');
+}
+
+function confirmExitWizard(){
+  if(confirm('入力中の内容は保存されません。ホームに戻りますか？')){
+    session = null;
+    goHome();
+  }
+}
+
+/* =========================================================
+   5. ウィザード（質問→回答→分岐）
+   ========================================================= */
+function currentCategory(){ return CATEGORIES[session.catIndex]; }
+
+function renderProgress(containerId){
+  const el = document.getElementById(containerId);
+  el.innerHTML = CATEGORIES.map((c,i)=>{
+    let cls='dot';
+    if(i<session.catIndex) cls+=' done';
+    else if(i===session.catIndex) cls+=' current';
+    return '<div class="'+cls+'" title="'+c.label+'"></div>';
+  }).join('');
+}
+
+function renderWizard(){
+  const cat = currentCategory();
+  const node = cat.nodes[session.curNode];
+  document.getElementById('wizCatLabel').textContent = cat.label + '（' + (session.catIndex+1) + '/' + CATEGORIES.length + '）';
+  document.getElementById('wizQuestion').textContent = node.q;
+  const hintEl = document.getElementById('wizHint');
+  if(node.hint){ hintEl.style.display='block'; hintEl.textContent = node.hint; }
+  else{ hintEl.style.display='none'; }
+
+  const optWrap = document.getElementById('wizOptions');
+  optWrap.innerHTML = '';
+  node.options.forEach((opt, idx)=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt.label;
+    btn.onclick = ()=>selectOption(idx);
+    optWrap.appendChild(btn);
+  });
+
+  document.getElementById('wizBackBtn').style.display = session.path.length>0 ? 'block' : 'none';
+  renderProgress('wizardProgress');
+}
+
+function selectOption(idx){
+  const cat = currentCategory();
+  const node = cat.nodes[session.curNode];
+  const opt = node.options[idx];
+  session.path.push({ node: session.curNode, optIndex: idx });
+
+  if(opt.next){
+    session.curNode = opt.next;
+    renderWizard();
+  } else {
+    // 葉に到達 → 判定結果（コード・緊急度）を記録し、カテゴリのまとめ画面へ
+    session.meta[cat.key] = { code: opt.code || null, urgency: opt.urgency || null, outcome: opt.outcome || null };
+    showCategorySummary(opt.note || null);
+  }
+}
+
+function wizardBack(){
+  if(session.path.length===0) return;
+  session.path.pop();
+  if(session.path.length===0){
+    session.curNode = currentCategory().start;
+  } else {
+    session.curNode = session.path[session.path.length-1].node;
+  }
+  renderWizard();
+}
+
+function buildCategoryText(){
+  const cat = currentCategory();
+  let parts = [];
+  session.path.forEach(step=>{
+    const node = cat.nodes[step.node];
+    const opt = node.options[step.optIndex];
+    if(opt.text) parts.push(opt.text);
+  });
+  return parts.join('');
+}
+
+function showCategorySummary(note){
+  const cat = currentCategory();
+  document.getElementById('catsumLabel').textContent = cat.label + '（' + (session.catIndex+1) + '/' + CATEGORIES.length + '）';
+  document.getElementById('catsumText').value = buildCategoryText();
+  document.getElementById('catsumBadge').innerHTML = badgeHtml(session.meta[cat.key]);
+  const noteEl = document.getElementById('catsumNote');
+  noteEl.innerHTML = note ? '<div class="note">💡 '+escapeHtml(note)+'</div>' : '';
+  document.getElementById('catsumNextBtn').textContent = (session.catIndex === CATEGORIES.length-1) ? '結果を確認する' : '次の項目へ';
+  renderProgress('catsumProgress');
+  showScreen('screen-catsummary');
+}
+
+function redoCategory(){
+  delete session.meta[currentCategory().key];
+  session.path = [];
+  session.curNode = currentCategory().start;
+  renderWizard();
+  showScreen('screen-wizard');
+}
+
+function confirmCategory(){
+  const cat = currentCategory();
+  session.texts[cat.key] = document.getElementById('catsumText').value;
+  if(session.catIndex < CATEGORIES.length-1){
+    session.catIndex++;
+    session.path = [];
+    session.curNode = currentCategory().start;
+    renderWizard();
+    showScreen('screen-wizard');
+  } else {
+    renderResult();
+    showScreen('screen-result');
+  }
+}
+
+/* =========================================================
+   6. 結果画面
+   ========================================================= */
+function renderResult(){
+  document.getElementById('resultMeta').innerHTML =
+    '利用者名：<b>'+escapeHtml(session.residentName)+'</b>　／　評価者：<b>'+escapeHtml(session.assessorName)+'</b>　／　評価日：<b>'+fmtDate(session.date)+'</b>';
+  document.getElementById('resultAlert').innerHTML = alertBannerHtml(session.meta);
+
+  const card = document.getElementById('resultCategoriesCard');
+  card.innerHTML = '';
+  CATEGORIES.forEach(cat=>{
+    const block = document.createElement('div');
+    block.className = 'summary-block';
+    block.innerHTML =
+      '<h4>'+cat.label+'</h4>'+
+      '<div class="cat-badges">'+badgeHtml(session.meta[cat.key])+'</div>'+
+      '<textarea data-key="'+cat.key+'" id="result-'+cat.key+'"></textarea>';
+    card.appendChild(block);
+    block.querySelector('textarea').value = session.texts[cat.key] || '';
+  });
+  document.getElementById('resultRemarks').value = session.remarks || '';
+  document.getElementById('resultCreatedDate').value = session.createdDate || todayISO();
+}
+
+function collectResultTexts(){
+  const texts = {};
+  CATEGORIES.forEach(cat=>{
+    texts[cat.key] = document.getElementById('result-'+cat.key).value;
+  });
+  return texts;
+}
+
+function saveAssessment(){
+  const texts = collectResultTexts();
+  const remarks = document.getElementById('resultRemarks').value;
+  const createdDate = document.getElementById('resultCreatedDate').value || todayISO();
+  const records = loadRecords();
+  const rec = {
+    id: uid(),
+    residentName: session.residentName,
+    assessorName: session.assessorName,
+    date: session.date,
+    createdAt: createdDate,
+    texts: texts,
+    meta: JSON.parse(JSON.stringify(session.meta || {})),
+    remarks: remarks
+  };
+  records.push(rec);
+  saveRecords(records);
+  session.texts = texts;
+  session.remarks = remarks;
+  session.createdDate = createdDate;
+  alert('保存しました。');
+}
+
+function printReport(){
+  const texts = collectResultTexts();
+  const remarks = document.getElementById('resultRemarks').value;
+  const createdDate = document.getElementById('resultCreatedDate').value || todayISO();
+  session.createdDate = createdDate;
+  fillPrintArea({
+    residentName: session.residentName,
+    assessorName: session.assessorName,
+    date: session.date,
+    createdAt: createdDate,
+    texts: texts,
+    meta: session.meta,
+    remarks: remarks
+  });
+  window.print();
+}
+
+function fillPrintArea(rec){
+  document.getElementById('printFacility').textContent = settings.org + ' ／ ' + settings.station;
+  document.getElementById('pm-date').textContent = fmtDate(rec.date);
+  document.getElementById('pm-resident').textContent = rec.residentName;
+  document.getElementById('pm-assessor').textContent = rec.assessorName;
+  document.getElementById('pm-created').textContent = rec.createdAt ? fmtDate(String(rec.createdAt).slice(0,10)) : '';
+  document.getElementById('pm-alert').innerHTML = ''; // 印刷では至急／24時間報告のバナーは表示しない
+  const catsEl = document.getElementById('printCats');
+  const rows = CATEGORIES.map(cat=>{
+    const t = (rec.texts[cat.key]||'（記録なし）').replace(/</g,'&lt;');
+    const m = rec.meta && rec.meta[cat.key];
+    const tag = (m && m.outcome==='ok') ? '<span class="p-tag-ok">✅ 課題なし</span>' : '';
+    return '<tr><td class="cat-name">'+cat.label+'</td><td class="cat-tag">'+tag+'</td><td class="cat-text">'+t+'</td></tr>';
+  }).join('');
+  catsEl.innerHTML = '<table class="p-cats">'+rows+'</table>';
+  document.getElementById('pm-remarks').textContent = rec.remarks || '（なし）';
+}
+
+/* =========================================================
+   7. 履歴
+   ========================================================= */
+function showHistoryResidents(){
+  const records = loadRecords();
+  const residents = [...new Set(records.map(r=>r.residentName))].sort();
+  const el = document.getElementById('histResidentList');
+  if(residents.length===0){
+    el.innerHTML = '<div class="empty">まだ記録がありません。</div>';
+  } else {
+    el.innerHTML = residents.map(name=>{
+      const count = records.filter(r=>r.residentName===name).length;
+      return '<div class="resident-item" onclick="showResidentRecords(\''+escapeAttr(name)+'\')">'+
+        '<span>'+escapeHtml(name)+'</span><span class="rsub">'+count+'件</span></div>';
+    }).join('');
+  }
+  showScreen('screen-hist-residents');
+}
+
+function showResidentRecords(name){
+  currentHistoryResident = name;
+  const records = loadRecords().filter(r=>r.residentName===name).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('histResidentName').textContent = name + ' さんの記録';
+  const el = document.getElementById('histRecordList');
+  if(records.length===0){
+    el.innerHTML = '<div class="empty">記録がありません。</div>';
+  } else {
+    el.innerHTML = records.map(r=>
+      '<div class="record-item" onclick="viewHistoryRecord(\''+r.id+'\')">'+
+        '<div><div class="rdate">'+fmtDate(r.date)+'</div><div class="rsub">評価者：'+escapeHtml(r.assessorName)+'</div></div>'+
+        '<span>詳細 ›</span>'+
+      '</div>'
+    ).join('');
+  }
+  showScreen('screen-hist-records');
+}
+
+function backToResidentRecords(){
+  showResidentRecords(currentHistoryResident);
+}
+
+function viewHistoryRecord(id){
+  currentHistoryRecordId = id;
+  const rec = loadRecords().find(r=>r.id===id);
+  if(!rec){ alert('記録が見つかりません。'); return; }
+  document.getElementById('histViewMeta').innerHTML =
+    '利用者名：<b>'+escapeHtml(rec.residentName)+'</b>　／　評価者：<b>'+escapeHtml(rec.assessorName)+'</b>　／　評価日：<b>'+fmtDate(rec.date)+'</b>';
+  document.getElementById('histViewAlert').innerHTML = alertBannerHtml(rec.meta);
+  const card = document.getElementById('histViewCategoriesCard');
+  card.innerHTML = CATEGORIES.map(cat=>{
+    const t = rec.texts[cat.key] || '（記録なし）';
+    const badge = badgeHtml(rec.meta && rec.meta[cat.key]);
+    return '<div class="summary-block"><h4>'+cat.label+'</h4><div class="cat-badges">'+badge+'</div><p style="white-space:pre-wrap;margin:0;">'+escapeHtml(t)+'</p></div>';
+  }).join('');
+  document.getElementById('histViewRemarksCard').innerHTML =
+    '<h3>備考</h3><p style="white-space:pre-wrap;margin:0;">'+escapeHtml(rec.remarks || '（なし）')+'</p>';
+  showScreen('screen-hist-view');
+}
+
+function printHistoryReport(){
+  const rec = loadRecords().find(r=>r.id===currentHistoryRecordId);
+  if(!rec) return;
+  fillPrintArea(rec);
+  window.print();
+}
+
+function deleteHistoryRecord(){
+  if(!confirm('この記録を削除しますか？この操作は取り消せません。')) return;
+  const records = loadRecords().filter(r=>r.id!==currentHistoryRecordId);
+  saveRecords(records);
+  showResidentRecords(currentHistoryResident);
+}
+
+/* =========================================================
+   8. 補助関数
+   ========================================================= */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function escapeAttr(str){ return String(str).replace(/'/g,"\\'"); }
+
+/* 判定結果（緊急度・判定コード）のバッジ表示 */
+function badgeHtml(m){
+  if(!m) return '';
+  let out = '';
+  if(m.urgency==='emergency') out += '<span class="badge emergency">🚑 至急対応（救急要請を検討）</span>';
+  else if(m.urgency==='report24') out += '<span class="badge report24">⏰ 24時間以内に報告</span>';
+  else if(m.outcome==='ok') out += '<span class="badge ok">✅ 課題なし</span>';
+  if(m.code) out += '<span class="badge code">判定コード '+escapeHtml(m.code)+'</span>';
+  return out;
+}
+function printTagHtml(m){
+  if(!m) return '';
+  if(m.urgency==='emergency') return '<div class="p-tag emergency">🚑 至急対応（救急要請を検討）</div>';
+  if(m.urgency==='report24') return '<div class="p-tag report24">⏰ 24時間以内に報告</div>';
+  if(m.outcome==='ok') return '<div class="p-tag">✅ 課題なし</div>';
+  return '';
+}
+function summarizeMeta(meta){
+  const emergencyCats=[], report24Cats=[];
+  CATEGORIES.forEach(cat=>{
+    const m = meta && meta[cat.key];
+    if(!m) return;
+    if(m.urgency==='emergency') emergencyCats.push(cat.label);
+    else if(m.urgency==='report24') report24Cats.push(cat.label);
+  });
+  return { emergencyCats, report24Cats };
+}
+function alertBannerHtml(meta){
+  const {emergencyCats, report24Cats} = summarizeMeta(meta);
+  if(emergencyCats.length===0 && report24Cats.length===0) return '';
+  let html = '';
+  if(emergencyCats.length){
+    html += '<div class="alert-banner danger">🚑 <b>至急の対応を検討してください：</b>'+emergencyCats.map(escapeHtml).join('、')+'</div>';
+  }
+  if(report24Cats.length){
+    html += '<div class="alert-banner warn">⏰ <b>24時間以内に主治医・ステーションへ報告してください：</b>'+report24Cats.map(escapeHtml).join('、')+'</div>';
+  }
+  return html;
+}
+function alertPrintHtml(meta){
+  const {emergencyCats, report24Cats} = summarizeMeta(meta);
+  if(emergencyCats.length===0 && report24Cats.length===0) return '';
+  let lines = [];
+  if(emergencyCats.length) lines.push('【至急】'+emergencyCats.join('、'));
+  if(report24Cats.length) lines.push('【24時間以内に報告】'+report24Cats.join('、'));
+  return '<div class="p-alert">⚠ '+lines.map(escapeHtml).join('　／　')+'</div>';
+}
+
+/* =========================================================
+   9. 初期化
+   ========================================================= */
+refreshHeaderSub();
+goHome();
+</script>
+</body>
+</html>
