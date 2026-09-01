@@ -178,6 +178,14 @@
   }
   .modal-box p{margin:0 0 18px;font-size:.92rem;color:#333;line-height:1.5;}
   .modal-box .row{display:flex;gap:10px;}
+
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:#2a2a2a;color:#fff;padding:12px 20px;border-radius:10px;
+    font-size:.88rem;max-width:88vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25);
+    z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -346,6 +354,9 @@
     </div>
   </div>
 </div>
+
+<!-- 汎用の通知（ブラウザ標準のalert()に頼らない） -->
+<div class="toast no-print" id="toastMsg"></div>
 
 <footer class="foot no-print">訪問看護 月次アセスメントアプリ（端末内保存版）</footer>
 
@@ -659,7 +670,7 @@ function saveSettings(){
 function clearAllData(){
   openConfirmModal('本当にすべてのアセスメント記録を削除しますか？この操作は取り消せません。', function(){
     localStorage.removeItem(STORAGE_KEY);
-    alert('削除しました。');
+    showToast('削除しました。');
     goHome();
   });
 }
@@ -684,8 +695,8 @@ function beginWizard(){
   const resident = document.getElementById('input-resident').value.trim();
   const assessor = document.getElementById('input-assessor').value.trim();
   const date = document.getElementById('input-date').value || todayISO();
-  if(!resident){ alert('利用者名を入力してください。'); return; }
-  if(!assessor){ alert('評価者名を入力してください。'); return; }
+  if(!resident){ showToast('利用者名を入力してください。'); return; }
+  if(!assessor){ showToast('評価者名を入力してください。'); return; }
 
   session = {
     residentName: resident,
@@ -714,6 +725,15 @@ function closeConfirmModal(result){
   const cb = __confirmModalCallback;
   __confirmModalCallback = null;
   if(result && cb) cb();
+}
+
+let __toastTimer = null;
+function showToast(message, duration){
+  const el = document.getElementById('toastMsg');
+  el.textContent = message;
+  el.classList.add('show');
+  if(__toastTimer) clearTimeout(__toastTimer);
+  __toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, duration || 2600);
 }
 
 function confirmExitWizard(){
@@ -907,7 +927,7 @@ function saveAssessment(){
   session.texts = texts;
   session.remarks = remarks;
   session.createdDate = createdDate;
-  alert('保存しました。');
+  showToast('保存しました。');
 }
 
 function printReport(){
@@ -1146,29 +1166,18 @@ async function buildAssessmentPdf(rec){
 }
 
 async function exportRecordAsPdf(rec, filename){
-  // Safari（特にiOS）は、クリックから時間差のある window.open() をポップアップとして
-  // ブロックしたり、白紙のタブを開いたりする。これを避けるため、PDFの中身ができる前に
-  // 先にタブだけ同期的に開いておき、あとから中身（PDFのURL）を差し込む。
-  const newTab = window.open('', '_blank');
-  if(newTab){
-    newTab.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PDF作成中</title></head>'+
-      '<body style="font-family:sans-serif;color:#555;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">'+
-      '<p>PDFを作成しています…</p></body></html>');
-  }
+  // 以前は window.open() で新しいタブを開いてからPDFを差し込む方式だったが、
+  // ホーム画面に追加したアプリ（スタンドアロン表示）ではタブという概念がなく、
+  // window.open() が失敗・無反応になることがあった。
+  // jsPDFの doc.save() は同じ画面内でダウンロードを起こす仕組みのため、
+  // 通常のSafari／Chromeでも、ホーム画面に追加したアプリでも同じように動作する。
   showPdfLoading(true);
   try{
     const doc = await buildAssessmentPdf(rec);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    if(newTab && !newTab.closed){
-      newTab.location.href = url;
-    } else {
-      window.open(url, '_blank');
-    }
+    doc.save(filename);
   }catch(e){
     console.error(e);
-    if(newTab && !newTab.closed){ newTab.close(); }
-    alert('PDFの作成に失敗しました。通信環境を確認のうえ、再度お試しください。');
+    showToast('PDFの作成に失敗しました。通信環境を確認のうえ、再度お試しください。', 4000);
   }finally{
     showPdfLoading(false);
   }
@@ -1243,7 +1252,7 @@ function backToResidentRecords(){
 function viewHistoryRecord(id){
   currentHistoryRecordId = id;
   const rec = loadRecords().find(r=>r.id===id);
-  if(!rec){ alert('記録が見つかりません。'); return; }
+  if(!rec){ showToast('記録が見つかりません。'); return; }
   document.getElementById('histViewMeta').innerHTML =
     '利用者名：<b>'+escapeHtml(rec.residentName)+'</b>　／　評価者：<b>'+escapeHtml(rec.assessorName)+'</b>　／　評価日：<b>'+fmtDate(rec.date)+'</b>';
   document.getElementById('histViewAlert').innerHTML = alertBannerHtml(rec.meta);
