@@ -167,6 +167,17 @@
   }
   footer.foot{text-align:center;color:var(--sub);font-size:.72rem;padding:20px 0;}
 
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+    align-items:center;justify-content:center;z-index:2000;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:#fff;border-radius:14px;padding:20px;max-width:340px;width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+  .modal-box p{margin:0 0 18px;font-size:.92rem;color:#333;line-height:1.5;}
+  .modal-box .row{display:flex;gap:10px;}
 </style>
 </head>
 <body>
@@ -325,6 +336,17 @@
 
 </main>
 
+<!-- 汎用の確認ダイアログ（ブラウザ標準のconfirm()に頼らない） -->
+<div class="modal-overlay no-print" id="confirmModal">
+  <div class="modal-box">
+    <p id="confirmModalMsg"></p>
+    <div class="row">
+      <button class="btn ghost" onclick="closeConfirmModal(false)">キャンセル</button>
+      <button class="btn" onclick="closeConfirmModal(true)">OK</button>
+    </div>
+  </div>
+</div>
+
 <footer class="foot no-print">訪問看護 月次アセスメントアプリ（端末内保存版）</footer>
 
 <!-- PRINT AREA -->
@@ -407,12 +429,8 @@ const CATEGORIES = [
       { label:'なし（飲水量不足による脱水のリスク状態）。', text:'下痢、発熱、嘔吐、多量発汗なし、脱水のリスク状態：飲水量不足が疑われる。', next:null, code:'e' }
     ]},
     Q6:{ q:'尿量は500ml/日以上ありますか？', hint:'', options:[
-      { label:'尿量500ml/日以上', text:'尿量500ml/日以上、', next:'Q7' },
+      { label:'尿量500ml/日以上', text:'尿量500ml/日以上、', next:'Q8' },
       { label:'尿量500ml/日以下（無尿・乏尿が疑われる）', text:'尿量500ml/日以下で無尿・乏尿が疑われる。', next:null, code:'f', urgency:'emergency' }
-    ]},
-    Q7:{ q:'浮腫はありますか？', hint:'', options:[
-      { label:'浮腫あり。', text:'浮腫あり。', next:null, code:'g', note:'「浮腫」のフローチャートで詳しく評価してください。' },
-      { label:'浮腫なし。', text:'浮腫なし。', next:'Q8' }
     ]},
     Q8:{ q:'飲水量は体重×25ml/日（または1L/日）以上ありますか？', hint:'①25ml/日×体重以上　OR　②1L/日以上', options:[
       { label:'25ml/日×体重以上、1ℓ/日以上ある。', text:'飲水量25ml/日×体重以上、1ℓ/日以上。', next:'Q9' },
@@ -451,7 +469,7 @@ const CATEGORIES = [
   }},
   { key:'circulation', label:'循環', start:'Q1', nodes:{
     Q1:{ q:'呼吸状態は安楽ですか？', hint:'', options:[
-      { label:'はい（安楽である）。', text:'呼吸状態は安楽である。', next:'Q8' },
+      { label:'はい（安楽である）。', text:'呼吸状態は安楽である。', next:'Q9' },
       { label:'いいえ（安楽ではない）。', text:'呼吸状態は安楽ではない。', next:'Q2' }
     ]},
     Q2:{ q:'意識レベルの低下はありませんか？', hint:'', options:[
@@ -477,10 +495,6 @@ const CATEGORIES = [
     Q7:{ q:'粗い断続性副雑音はありませんか？', hint:'', options:[
       { label:'はい（なし）。', text:'粗い断続性副雑音なく、循環機能障害のリスク状態である。', next:null, code:'e', urgency:'report24' },
       { label:'いいえ（あり）。', text:'粗い断続性副雑音があり、顕在する循環機能障害がみられる。', next:null, code:'c', urgency:'report24' }
-    ]},
-    Q8:{ q:'浮腫はありませんか？', hint:'', options:[
-      { label:'はい（浮腫なし）。', text:'浮腫なし。', next:'Q9', skipCategory:'edema', skipText:'循環の評価にて浮腫なしと確認済みのため、本項目は省略した。' },
-      { label:'いいえ（浮腫あり）。', text:'浮腫あり。', next:null, code:'f', note:'「浮腫」のフローチャートで詳しく評価してください。' }
     ]},
     Q9:{ q:'活気があり、湿性の咳・夜間の尿量増加がなく、血圧・脈拍は基準内ですか？', hint:'①活気あり②湿性の咳なし③夜間の尿量増加なし④収縮期血圧110～150mmHg以内⑤P=HR=50～80回/分', options:[
       { label:'はい（すべて該当、課題なし）。', text:'活気あり、湿性の咳なし、夜間の尿量増加なし、収縮期血圧110～150mmHg以内、P=HR=50～80回/分であり、課題なし。', next:null, outcome:'ok' },
@@ -643,11 +657,11 @@ function saveSettings(){
   goHome();
 }
 function clearAllData(){
-  if(confirm('本当にすべてのアセスメント記録を削除しますか？この操作は取り消せません。')){
+  openConfirmModal('本当にすべてのアセスメント記録を削除しますか？この操作は取り消せません。', function(){
     localStorage.removeItem(STORAGE_KEY);
     alert('削除しました。');
     goHome();
-  }
+  });
 }
 
 /* =========================================================
@@ -689,11 +703,24 @@ function beginWizard(){
   showScreen('screen-wizard');
 }
 
+let __confirmModalCallback = null;
+function openConfirmModal(message, onYes){
+  __confirmModalCallback = onYes;
+  document.getElementById('confirmModalMsg').textContent = message;
+  document.getElementById('confirmModal').classList.add('show');
+}
+function closeConfirmModal(result){
+  document.getElementById('confirmModal').classList.remove('show');
+  const cb = __confirmModalCallback;
+  __confirmModalCallback = null;
+  if(result && cb) cb();
+}
+
 function confirmExitWizard(){
-  if(confirm('入力中の内容は保存されません。ホームに戻りますか？')){
+  openConfirmModal('入力中の内容は保存されません。ホームに戻りますか？', function(){
     session = null;
     goHome();
-  }
+  });
 }
 
 /* =========================================================
@@ -1239,10 +1266,11 @@ function printHistoryReport(){
 }
 
 function deleteHistoryRecord(){
-  if(!confirm('この記録を削除しますか？この操作は取り消せません。')) return;
-  const records = loadRecords().filter(r=>r.id!==currentHistoryRecordId);
-  saveRecords(records);
-  showResidentRecords(currentHistoryResident);
+  openConfirmModal('この記録を削除しますか？この操作は取り消せません。', function(){
+    const records = loadRecords().filter(r=>r.id!==currentHistoryRecordId);
+    saveRecords(records);
+    showResidentRecords(currentHistoryResident);
+  });
 }
 
 /* =========================================================
