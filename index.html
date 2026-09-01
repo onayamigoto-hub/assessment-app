@@ -479,7 +479,7 @@ const CATEGORIES = [
       { label:'いいえ（あり）。', text:'粗い断続性副雑音があり、顕在する循環機能障害がみられる。', next:null, code:'c', urgency:'report24' }
     ]},
     Q8:{ q:'浮腫はありませんか？', hint:'', options:[
-      { label:'はい（浮腫なし）。', text:'浮腫なし。', next:'Q9' },
+      { label:'はい（浮腫なし）。', text:'浮腫なし。', next:'Q9', skipCategory:'edema', skipText:'循環の評価にて浮腫なしと確認済みのため、本項目は省略した。' },
       { label:'いいえ（浮腫あり）。', text:'浮腫あり。', next:null, code:'f', note:'「浮腫」のフローチャートで詳しく評価してください。' }
     ]},
     Q9:{ q:'活気があり、湿性の咳・夜間の尿量増加がなく、血圧・脈拍は基準内ですか？', hint:'①活気あり②湿性の咳なし③夜間の尿量増加なし④収縮期血圧110～150mmHg以内⑤P=HR=50～80回/分', options:[
@@ -487,7 +487,11 @@ const CATEGORIES = [
       { label:'いいえ（該当せず、循環機能障害のリスク状態）。', text:'活気なし、湿性の咳あり、夜間の尿量増加あり、または血圧・脈拍が基準外であり、循環機能障害のリスク状態である。', next:null, code:'e', urgency:'report24' }
     ]}
   }},
-  { key:'edema', label:'浮腫', start:'Q1', nodes:{
+  { key:'edema', label:'浮腫', start:'Q0', nodes:{
+    Q0:{ q:'浮腫はありますか？', hint:'', options:[
+      { label:'はい（浮腫あり）。', text:'浮腫がみられる。', next:'Q1' },
+      { label:'いいえ（浮腫なし、経過観察）。', text:'浮腫はみられず、経過観察とする。', next:null, outcome:'ok' }
+    ]},
     Q1:{ q:'局所性の浮腫ですか？', hint:'', options:[
       { label:'はい（局所性浮腫である）。', text:'局所性浮腫である。', next:'Q5' },
       { label:'いいえ（局所性でない浮腫である）。', text:'局所性でない浮腫である。', next:'Q2' }
@@ -551,14 +555,14 @@ const CATEGORIES = [
       { label:'いいえ（1週間以上経過）。', text:'患部の状態が発症から1週間以上たっており、不適切な処置方法・薬剤使用の疑いがある。', next:null, code:'h', urgency:'report24' }
     ]}
   }},
-  { key:'dementia', label:'認知症', start:'Q1', nodes:{
+  { key:'dementia', label:'認知症', start:'Q0', nodes:{
+    Q0:{ q:'認知症はありますか？', hint:'', options:[
+      { label:'はい（認知症あり）。', text:'認知症がみられる。', next:'Q1' },
+      { label:'いいえ（認知症なし、経過観察）。', text:'認知症はみられず、経過観察とする。', next:null, outcome:'ok' }
+    ]},
     Q1:{ q:'「認知症」の診断があるか、受診を継続中・検討中ですか？', hint:'①「認知症」の診断あり　OR　②受診継続中／検討中', options:[
       { label:'はい（診断あり、または受診継続・検討中）。', text:'認知症の診断があるか、受診を継続または検討中である。', next:'Q3' },
-      { label:'いいえ（診断なし、受診の予定もない）。', text:'認知症の診断がなく、受診の予定もない。', next:'Q2' }
-    ]},
-    Q2:{ q:'「長谷川式テスト」で20点以上ですか？', hint:'', options:[
-      { label:'はい（20点以上、経過観察）。', text:'「長谷川式テスト」で20点以上であり、経過観察とする。', next:null, outcome:'ok' },
-      { label:'いいえ（20点未満）。', text:'「長谷川式テスト」で20点未満であり、認知症の疑い＋行動障害がみられる。', next:null, code:'a', urgency:'report24' }
+      { label:'いいえ（診断なし、受診の予定もない）。', text:'認知症の診断がなく、受診の予定もなく、経過観察とする。', next:null, outcome:'ok' }
     ]},
     Q3:{ q:'内服コンプライアンスは良好ですか？', hint:'', options:[
       { label:'はい（良好）。', text:'認知症の診断あり（または受診継続・検討中）で内服コンプライアンス良好であるが、行動障害がみられる。', next:null, code:'c', urgency:'report24' },
@@ -676,6 +680,7 @@ function beginWizard(){
     catIndex: 0,
     texts: {},           // key -> 確定済みテキスト
     meta: {},            // key -> {code, urgency, outcome} 判定結果の付帯情報
+    skipCategories: {},  // key -> {text} 他項目の回答により自動省略するカテゴリー
     // wizard内部状態
     path: [],            // {node, optIndex, added(bool)}
     curNode: CATEGORIES[0].start
@@ -735,6 +740,12 @@ function selectOption(idx){
   const opt = node.options[idx];
   session.path.push({ node: session.curNode, optIndex: idx });
 
+  if(opt.skipCategory){
+    // 他項目の回答から、別カテゴリーの結論がすでに出ている場合、そのカテゴリーは
+    // 質問せずに自動入力してスキップする（例：循環で「浮腫なし」→ 浮腫の項目を省略）
+    session.skipCategories[opt.skipCategory] = { text: opt.skipText || null };
+  }
+
   if(opt.next){
     session.curNode = opt.next;
     renderWizard();
@@ -790,15 +801,30 @@ function redoCategory(){
 function confirmCategory(){
   const cat = currentCategory();
   session.texts[cat.key] = document.getElementById('catsumText').value;
-  if(session.catIndex < CATEGORIES.length-1){
+  advanceToNextCategory();
+}
+
+function advanceToNextCategory(){
+  while(true){
+    if(session.catIndex >= CATEGORIES.length-1){
+      renderResult();
+      showScreen('screen-result');
+      return;
+    }
     session.catIndex++;
+    const nextCat = currentCategory();
+    const skip = session.skipCategories && session.skipCategories[nextCat.key];
+    if(skip){
+      // 他項目の回答からすでに結論が出ているカテゴリーは、質問せず自動入力して次へ進む
+      session.texts[nextCat.key] = skip.text || (nextCat.label + 'は、他の項目の評価結果により省略した。');
+      session.meta[nextCat.key] = { code:null, urgency:null, outcome:'ok' };
+      continue;
+    }
     session.path = [];
-    session.curNode = currentCategory().start;
+    session.curNode = nextCat.start;
     renderWizard();
     showScreen('screen-wizard');
-  } else {
-    renderResult();
-    showScreen('screen-result');
+    return;
   }
 }
 
