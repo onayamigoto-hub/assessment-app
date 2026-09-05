@@ -440,8 +440,12 @@ const CATEGORIES = [
       { label:'なし（飲水量不足による脱水のリスク状態）。', text:'下痢、発熱、嘔吐、多量発汗なし、脱水のリスク状態：飲水量不足が疑われる。', next:null, code:'e' }
     ]},
     Q6:{ q:'尿量は500ml/日以上ありますか？', hint:'', options:[
-      { label:'尿量500ml/日以上', text:'尿量500ml/日以上、', next:'Q8' },
+      { label:'尿量500ml/日以上', text:'尿量500ml/日以上、', next:'Q7' },
       { label:'尿量500ml/日以下（無尿・乏尿が疑われる）', text:'尿量500ml/日以下で無尿・乏尿が疑われる。', next:null, code:'f', urgency:'emergency' }
+    ]},
+    Q7:{ q:'浮腫はありますか？', hint:'', options:[
+      { label:'浮腫あり。', text:'浮腫あり。', next:null, code:'g', note:'「浮腫」のフローチャートで詳しく評価してください。' },
+      { label:'浮腫なし。', text:'浮腫なし。', next:'Q8' }
     ]},
     Q8:{ q:'飲水量は体重×25ml/日（または1L/日）以上ありますか？', hint:'①25ml/日×体重以上　OR　②1L/日以上', options:[
       { label:'25ml/日×体重以上、1ℓ/日以上ある。', text:'飲水量25ml/日×体重以上、1ℓ/日以上。', next:'Q9' },
@@ -480,7 +484,7 @@ const CATEGORIES = [
   }},
   { key:'circulation', label:'循環', start:'Q1', nodes:{
     Q1:{ q:'呼吸状態は安楽ですか？', hint:'', options:[
-      { label:'はい（安楽である）。', text:'呼吸状態は安楽である。', next:'Q9' },
+      { label:'はい（安楽である）。', text:'呼吸状態は安楽である。', next:'Q8' },
       { label:'いいえ（安楽ではない）。', text:'呼吸状態は安楽ではない。', next:'Q2' }
     ]},
     Q2:{ q:'意識レベルの低下はありませんか？', hint:'', options:[
@@ -506,6 +510,10 @@ const CATEGORIES = [
     Q7:{ q:'粗い断続性副雑音はありませんか？', hint:'', options:[
       { label:'はい（なし）。', text:'粗い断続性副雑音なく、循環機能障害のリスク状態である。', next:null, code:'e', urgency:'report24' },
       { label:'いいえ（あり）。', text:'粗い断続性副雑音があり、顕在する循環機能障害がみられる。', next:null, code:'c', urgency:'report24' }
+    ]},
+    Q8:{ q:'浮腫はありませんか？', hint:'', options:[
+      { label:'はい（浮腫なし）。', text:'浮腫なし。', next:'Q9' },
+      { label:'いいえ（浮腫あり）。', text:'浮腫あり。', next:null, code:'f', note:'「浮腫」のフローチャートで詳しく評価してください。' }
     ]},
     Q9:{ q:'活気があり、湿性の咳・夜間の尿量増加がなく、血圧・脈拍は基準内ですか？', hint:'①活気あり②湿性の咳なし③夜間の尿量増加なし④収縮期血圧110～150mmHg以内⑤P=HR=50～80回/分', options:[
       { label:'はい（すべて該当、課題なし）。', text:'活気あり、湿性の咳なし、夜間の尿量増加なし、収縮期血圧110～150mmHg以内、P=HR=50～80回/分であり、課題なし。', next:null, outcome:'ok' },
